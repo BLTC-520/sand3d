@@ -1,0 +1,15 @@
+# sand3d
+
+> 3D modeling in Python, built for LLMs. A library for writing 3D objects as short programs over Blender's bpy: profiles, solids, edits, frames, joints and assemblies. Programs use `import sand3d as s3d`; lengths are in millimetres; every verb returns a named object; export to GLB, URDF, USDA, OBJ or STL.
+
+## Docs
+
+- [Website](https://sandflow-ai.github.io/sand3d/): the quickstart (every verb, with code that runs and its render), an articulated gallery, the API.
+- [API reference](docs/api.md): the rules of the vocabulary, every signature with one line, worked examples; about 3 600 tokens, written to be put in a prompt whole.
+- [Writing an assembly](docs/guidelines.md): eight rules for objects of several parts: the plan first, then the details, then the parts.
+
+## Examples
+
+- [A washing machine](programs/washing_machine.py): an articulated object, four joints, materials.
+- [A tufted chair](programs/tufted_chair.py): lofts, tufts, rows of nails as details on anchors.
+- [The worked examples](docs/examples/): a bracket, a lamp, a rack, a chair, a gate.

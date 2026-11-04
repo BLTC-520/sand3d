@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sand3d: the API for LLMs</title>
+<meta name="description" content="3D modeling in Python, built for LLMs.">
+<link rel="icon" href="assets/sandflow-symbol-black.svg">
+<link rel="stylesheet" href="assets/site.css">
+</head><body><div class="page">
+<div class="nav"><a href="index.html"><img class="marque" src="assets/sandflow-signature.svg" alt="Sandflow"></a><nav><a href="index.html">Home</a><a href="gallery.html">Gallery</a><a href="quickstart.html">Quickstart</a><a href="api.html" class="on">API for LLMs</a><a href="https://github.com/Sandflow-ai/sand3d">GitHub</a></nav></div>
+
+<p class="repere">API for LLMs</p>
+<h1>The whole API, for a prompt</h1>
+<div class="bande"></div>
+<p class="chapo">Everything a model needs to write sand3d: the rules of the vocabulary, every signature with
+one line on it, and worked examples. 3&#8239;643 tokens (o200k_base). Paste it in a system prompt as it is.</p>
+<div class="actions"><button class="btn plein" data-copy="raw">Copy for your prompt</button>
+<a class="btn" href="api.md">api.md, raw</a><a class="btn" href="llms.txt">llms.txt</a></div>
+<p><code>import sand3d as s3d</code>; mm, or <code>units("m")</code> first. Makers take a name, return the solid; edits return it. Edges and faces go by their maker's names (top bottom side rim seam start end cut, tool names, plate.top).</p>
+<ol class="rules"><li>A placement is a frame plus values. <code>at</code> sets the values it is given and keeps the others; <code>on=</code> changes the frame, and x, y, z then run along its axes; <code>transform</code> moves the whole thing, as a parent would, mirror included.</li><li>To repeat, pass a list of frames to <code>on=</code>: once per frame, in <code>at</code>, <code>hole</code> and <code>pocket</code>.</li><li>A list of objects is worth its elements, wherever a verb takes objects.</li><li>What a verb uses up no longer exists. <code>copy</code> keeps it; always use what <code>at</code> returns.</li><li>Every solid starts at z = 0, centred in x and y: <code>box</code> is the <code>extrude</code> of its <code>rect</code>; <code>extrude(both=True)</code> centres one on its plane. A face's frame starts where the origin projects onto it: a vertical face's, at its foot. A frame's Z is the face's normal; on a face whose normal is ±Z its X is +X, on any other X is Z × normal: on a face looking +X, X is +Y and Y is up. A side, an edge or a corner of a box is named by directions: <code>bbox(ob, "+X")</code> is the centre of that side of its bounding box, <code>"+X-Y"</code> the middle of an edge, <code>"+X-Y+Z"</code> a corner, with the axes of a face looking the first way named, on a part or a group; <code>at</code>'s <code>anchor</code> takes the same ("-Z", "+Y-Z"; its words top bottom left right front back are +Z -Z -X +X -Y +Y).</li><li>A joint lets a part move on another. Place the part first: <code>joint</code> does not move it, it says how it moves — on the part its frame <code>on</code> was read on (<code>ob.face</code>, <code>bbox</code>, <code>local</code>, an assembly's anchor; it stays read on it through <code>.move</code>, <code>.turn</code>, <code>.offset</code>), about or along <code>axis</code>: a direction ("+Z", "-X"…) in the space the parent lives in, as in <code>face</code>, or "normal", <code>on</code>'s Z. A pivot given as numbers — a source's joint origin, xyz and rpy — is <code>local(parent, x, y, z, rx, ry, rz)</code>, in the parent's own space: <code>at(child, on=…)</code> places the child there, <code>joint</code> hangs it there. Positive values slide along the axis, or turn by the right hand about it: about +Z, +X turns toward +Y — a door hinged on the -Y edge of a +X face opens outward about "-Z". The range contains 0; a joint that follows another takes its range from it. Everything is built at rest, every joint at 0; <code>pose(child, value)</code> moves the mechanism. A part with no joint moves with its group; a jointed part moves by its joint, whatever group it is in; <code>on</code> is never read on the child itself. Joints may come before or after <code>group</code>/<code>assembly</code>. <code>copy</code> copies a jointed part's joints (it hangs on the same parent); <code>transform</code> moves the part with its pivot (a mirror image moves as the image of the motion); <code>at</code> refuses it. Two joints on one child compose in order (a screw: a turn, and a slide that follows it with <code>ratio=pitch / 360</code>).</li></ol>
+<h2 id="signatures">Signatures</h2>
+<h3>Profiles</h3><div class="fiche"><pre class="code">rect(w, d, r=<span class="n">0</span>, chamfer=<span class="n">0</span>)  <span class="c"># Centred; corners rounded or cut</span>
+circle(d)  <span class="c"># Centred</span>
+ellipse(w, d)  <span class="c"># Centred</span>
+slot(l, d)  <span class="c"># Round-ended slot along X</span>
+polygon(n, d)  <span class="c"># Regular polygon, corner on +X</span>
+poly(pts, fillet=<span class="n">0</span>, chamfer=<span class="n">0</span>)  <span class="c"># Outline through points, arcs, splines</span>
+arc(center=(<span class="n">0</span>, <span class="n">0</span>), r=<span class="n">1</span>, start=<span class="n">0</span>, end=<span class="n">360</span>, *, through=<span class="k">None</span>, to=<span class="k">None</span>)  <span class="c"># Arc from start to end, anticlockwise if end &gt; start: a path, or a poly run</span>
+tangent_arc(to)  <span class="c"># Poly run: arc leaving tangent</span>
+spline(pts, closed=<span class="k">False</span>, tangents=<span class="k">None</span>, loop=<span class="k">False</span>)  <span class="c"># Smooth curve; closed: a profile; loop: a ring path</span>
+superellipse(w, d, n=<span class="n">2</span>, taper=<span class="n">0</span>)  <span class="c"># Ellipse (n=2) to box (n=4); taper narrows its +Y side, an egg</span>
+station(z, w, d, x=<span class="n">0</span>, y=<span class="n">0</span>, n=<span class="n">2</span>, taper=<span class="n">0</span>)  <span class="c"># Loft section at height z; n and taper as superellipse</span>
+text(s, size, font=<span class="k">None</span>)  <span class="c"># Centred outline</span>
+offset(p, t)  <span class="c"># Grown by t</span>
+stroke(path, t)  <span class="c"># A band t wide along an open path, centred on it: a closed outline</span>
+wrap(*profiles)  <span class="c"># Convex outline round profiles</span>
+mirror(p, flip=<span class="s">&#x27;x&#x27;</span>)  <span class="c"># Plus its image, flip negated</span></pre><p class="counts">16 lines · 348 tokens (o200k_base)</p></div><h3>Solids, paths</h3><div class="fiche"><pre class="code">extrude(name, profile, h=<span class="k">None</span>, taper=<span class="n">0</span>, twist=<span class="n">0</span>, both=<span class="k">False</span>, h2=<span class="k">None</span>, on=<span class="k">None</span>, until=<span class="k">None</span>)  <span class="c"># Prism up Z (taper &gt; 0 narrows it upward), or until a plane or solid; on a face, by on</span>
+revolve(name, profile, angle=<span class="n">360</span>)  <span class="c"># X radius, Y height, turned about Z</span>
+sweep(name, profile, path, scale=<span class="n">1</span>, twist=<span class="n">0</span>, frenet=<span class="k">False</span>)  <span class="c"># Profile along a path</span>
+loft(name, *sections, follow=<span class="k">False</span>, loop=<span class="k">False</span>)  <span class="c"># Through placed sections, capped; loop: a ring</span>
+body(name, plan, top, bottom, n=<span class="n">2</span>)  <span class="c"># Solid along Y from its views, where they draw it: plan (y, width), side top and bottom (y, z) or numbers; superellipse sections</span>
+wire(name, path, d, closed=<span class="k">None</span>, fillet=<span class="n">0</span>)  <span class="c"># Round wire along a path: (x, y, z) points, a spline, an arc, a helix; fillet rounds the corners of points, d / 2 at least</span>
+helix(d, pitch, h, left=<span class="k">False</span>)  <span class="c"># Coil path up Z</span>
+box(name, w, d, h)  <span class="c"># On Z = 0, centred in X and Y</span>
+cylinder(name, d, h)  <span class="c"># Along Z, from Z = 0</span>
+tube(name, d, d_in, h)  <span class="c"># Along Z, from Z = 0</span>
+cone(name, d, h, d2=<span class="n">0</span>)  <span class="c"># Along Z, from Z = 0</span>
+sphere(name, d)  <span class="c"># On Z = 0</span>
+wedge(name, w, d, h, top=<span class="n">0</span>)  <span class="c"># Box narrowed on top</span>
+torus(name, d, d_wire)  <span class="c"># Ring about Z, on Z = 0</span>
+dome(name, d, h)  <span class="c"># Cap on Z = 0</span></pre><p class="counts">15 lines · 416 tokens (o200k_base)</p></div><h3>Edits</h3><div class="fiche"><pre class="code">cut(ob, *tools)  <span class="c"># Subtract tools</span>
+join(ob, *others)  <span class="c"># Fuse others in; ob&#x27;s material wins: group keeps each its own</span>
+intersect(ob, tool)  <span class="c"># Keep the common part</span>
+split(ob, frame, keep=<span class="s">&#x27;above&#x27;</span>)  <span class="c"># By a frame&#x27;s plane</span>
+delete(ob)  <span class="c"># Remove it</span>
+copy(ob)  <span class="c"># An independent copy, its joints with it</span>
+hole(ob, d, on=(<span class="n">0</span>, <span class="n">0</span>), depth=<span class="k">None</span>, cbore=<span class="k">None</span>, csk=<span class="k">None</span>)  <span class="c"># On frames or points: through, or depth deep</span>
+pocket(ob, profile, depth=<span class="k">None</span>, on=<span class="k">None</span>)  <span class="c"># Profile cut in from a face</span>
+merge(*obs)  <span class="c"># No boolean</span>
+scale(ob, s)  <span class="c"># About its origin</span>
+fillet(ob, r, edges=<span class="s">&#x27;all&#x27;</span>)  <span class="c"># Round named edges</span>
+chamfer(ob, d, edges=<span class="s">&#x27;all&#x27;</span>, d2=<span class="k">None</span>, angle=<span class="k">None</span>)  <span class="c"># Bevel named edges</span>
+soften(ob, r, angle=<span class="n">30</span>)  <span class="c"># Round all sharp edges</span>
+shell(ob, t, open=<span class="k">None</span>)  <span class="c"># Hollow; open named faces, or the flat faces looking &quot;+Y&quot;, &quot;-X +X&quot;</span>
+dent(ob, points, r, depth)  <span class="c"># Press hollows at points</span></pre><p class="counts">15 lines · 267 tokens (o200k_base)</p></div><h3>Frames, placement</h3><div class="fiche"><pre class="code">Frame(origin=(<span class="n">0</span>, <span class="n">0</span>, <span class="n">0</span>), normal=(<span class="n">0</span>, <span class="n">0</span>, <span class="n">1</span>), up=<span class="k">None</span>)  <span class="c"># A place to build on</span>
+.<span class="vb">offset</span>(d) .turn(rx=<span class="n">0</span>, ry=<span class="n">0</span>, rz=<span class="n">0</span>) .move(x=<span class="n">0</span>, y=<span class="n">0</span>, z=<span class="n">0</span>) .point(x=<span class="n">0</span>, y=<span class="n">0</span>, z=<span class="n">0</span>)
+ob.face(which)  <span class="c"># Frame of a named face, or furthest along &quot;+Z&quot;</span>
+ob.edge(which)  <span class="c"># Path along the edges named which, in the space ob is in: the longest run (as long: the one reaching furthest -X, then -Y, -Z), closed if it closes</span>
+bbox(ob, which)  <span class="c"># Frame on its bounding box: a side &quot;+X&quot;, an edge &quot;+X-Y&quot;, a corner &quot;+X-Y+Z&quot;</span>
+local(ob, x=<span class="n">0</span>, y=<span class="n">0</span>, z=<span class="n">0</span>, rx=<span class="n">0</span>, ry=<span class="n">0</span>, rz=<span class="n">0</span>)  <span class="c"># Frame at (x, y, z) of its own space, turned (rx, ry, rz) degrees</span>
+at(ob, x=<span class="k">None</span>, y=<span class="k">None</span>, z=<span class="k">None</span>, rx=<span class="k">None</span>, ry=<span class="k">None</span>, rz=<span class="k">None</span>, on=<span class="k">None</span>, anchor=<span class="k">None</span>)  <span class="c"># Place it: set what is given, keep the rest; anchor: &quot;-Z&quot;, &quot;+Y-Z&quot;…</span>
+transform(ob, x=<span class="n">0</span>, y=<span class="n">0</span>, z=<span class="n">0</span>, rx=<span class="n">0</span>, ry=<span class="n">0</span>, rz=<span class="n">0</span>, mirror=<span class="k">None</span>)  <span class="c"># Move it by, as a parent would; its placement, not its mesh</span>
+grid(nx, ny=<span class="n">1</span>, px=<span class="n">0</span>, py=<span class="n">0</span>, stagger=<span class="k">False</span>, on=<span class="k">None</span>)  <span class="c"># On a grid</span>
+ring(n, r, start=<span class="n">0</span>, angle=<span class="n">360</span>, on=<span class="k">None</span>)  <span class="c"># On a circle</span>
+along(path, pitch=<span class="k">None</span>, count=<span class="k">None</span>)  <span class="c"># Along a path</span>
+snap(targets, points, direction=<span class="k">None</span>)  <span class="c"># On a surface</span></pre><p class="counts">12 lines · 405 tokens (o200k_base)</p></div><h3>Parts</h3><div class="fiche"><pre class="code">gear(name, teeth, module, width, bore=<span class="n">0</span>, angle=<span class="n">20</span>)  <span class="c"># Involute spur gear</span>
+knurl(name, d, h, pitch=<span class="k">None</span>, straight=<span class="k">False</span>)  <span class="c"># Knurled grip; pitch 1 mm by default</span>
+thread(name, d, length, pitch, left=<span class="k">False</span>)  <span class="c"># Threaded rod</span></pre><p class="counts">3 lines · 70 tokens (o200k_base)</p></div><h3>Materials</h3><div class="fiche"><pre class="code">material(ob, kind, color=<span class="k">None</span>, roughness=<span class="k">None</span>, metallic=<span class="k">None</span>, opacity=<span class="k">None</span>, emission=<span class="k">None</span>)  <span class="c"># Kind: oak walnut pine birch steel brushed_steel chrome aluminium brass copper painted_metal plastic glossy_plastic rubber glass ceramic fabric velvet leather marble concrete light; color &quot;#rrggbb&quot;</span></pre><p class="counts">1 lines · 61 tokens (o200k_base)</p></div><h3>Articulation</h3><div class="fiche"><pre class="code">joint(name, child, on, kind=<span class="s">&#x27;revolute&#x27;</span>, axis=<span class="s">&#x27;normal&#x27;</span>, range=<span class="k">None</span>, follows=<span class="k">None</span>, ratio=<span class="n">1</span>)  <span class="c"># How child moves on the part on was read on: revolute (range in degrees), continuous (no range), prismatic (range in the unit), free (no axis, no range); follows: a child or a joint name, and this joint&#x27;s value is ratio × its (degrees per unit, or units per degree), no range; returns child</span>
+pose(ob, value, joint=<span class="k">None</span>)  <span class="c"># Move the mechanism: that joint to value (degrees or the unit), an error outside its range; what it carries follows; joint= when child has two</span>
+seat(host, part)  <span class="c"># Take out of host the volume part fills, as it sits at rest; part untouched</span></pre><p class="counts">3 lines · 168 tokens (o200k_base)</p></div><h3>Assembly</h3><div class="fiche"><pre class="code">group(name, *children)  <span class="c"># Parent of children</span>
+assembly(name, *children, **anchors)  <span class="c"># Parts and anchors</span>
+attach(handle, name, *children)  <span class="c"># A detail, under a handle</span>
+Handle(root, **anchors)  <span class="c"># Root and anchors</span>
+export(root, path)  <span class="c"># root and what hangs on it by its joints, in metres: .glb at the current pose, joints in extras; .urdf a link per moving part, at rest, meshes beside it; .usda the URDF&#x27;s tree as OpenUSD text, with the materials; .obj and .stl its meshes at the current pose</span>
+empty_scene()  <span class="c"># Fresh scene</span>
+units(name=<span class="k">None</span>)  <span class="c"># Length unit: &quot;mm&quot; (default), &quot;cm&quot;, &quot;m&quot;</span>
+fingerprint()  <span class="c"># Digest of the source</span></pre><p class="counts">8 lines · 172 tokens (o200k_base)</p></div>
+<h2 id="examples">Examples</h2>
+<div class="fiche"><pre class="code"><span class="k">def</span> <span class="f">bracket</span>(w=<span class="n">80</span>, d=<span class="n">40</span>, t=<span class="n">6</span>, hole_d=<span class="n">6.6</span>, pitch=<span class="n">50</span>):
+    plate = s3d.<span class="vb">extrude</span>(<span class="s">&quot;plate&quot;</span>, s3d.<span class="vb">rect</span>(w, d, r=<span class="n">4</span>), t)
+    s3d.<span class="vb">hole</span>(plate, hole_d, on=s3d.<span class="vb">grid</span>(<span class="n">2</span>, <span class="n">1</span>, pitch, <span class="n">0</span>))
+    s3d.<span class="vb">fillet</span>(plate, <span class="n">1</span>, edges=<span class="s">&quot;top&quot;</span>)
+    <span class="k">return</span> plate
+
+<span class="k">def</span> <span class="f">lamp</span>(stem_h=<span class="n">300</span>):
+    base = s3d.<span class="vb">revolve</span>(<span class="s">&quot;base&quot;</span>, [(<span class="n">0</span>, <span class="n">0</span>), (<span class="n">70</span>, <span class="n">0</span>), (<span class="n">60</span>, <span class="n">20</span>), (<span class="n">0</span>, <span class="n">20</span>)])
+    stem = s3d.<span class="vb">at</span>(s3d.<span class="vb">cylinder</span>(<span class="s">&quot;stem&quot;</span>, <span class="n">12</span>, stem_h), on=base.face(<span class="s">&quot;top&quot;</span>))
+    lamp = s3d.<span class="vb">assembly</span>(<span class="s">&quot;lamp&quot;</span>, base, stem, head=s3d.<span class="vb">Frame</span>((<span class="n">0</span>, <span class="n">0</span>, <span class="n">20</span> + stem_h)))
+    add_shade(lamp)
+    <span class="k">return</span> lamp
+
+<span class="k">def</span> <span class="f">add_shade</span>(lamp, d=<span class="n">180</span>):
+    shade = s3d.<span class="vb">shell</span>(s3d.<span class="vb">cone</span>(<span class="s">&quot;shade&quot;</span>, d, <span class="n">120</span>, d2=d / <span class="n">2</span>), <span class="n">1.5</span>, open=<span class="s">&quot;top bottom&quot;</span>)
+    s3d.<span class="vb">attach</span>(lamp, <span class="s">&quot;shade&quot;</span>, s3d.<span class="vb">at</span>(shade, on=lamp.head))
+
+<span class="k">def</span> <span class="f">rack</span>(n=<span class="n">4</span>, pitch=<span class="n">30</span>, depth=<span class="n">40</span>, t=<span class="n">5</span>):
+    base = s3d.<span class="vb">extrude</span>(<span class="s">&quot;base&quot;</span>, s3d.<span class="vb">rect</span>(n * pitch, depth, r=<span class="n">3</span>), t)
+    pegs = s3d.<span class="vb">at</span>(s3d.<span class="vb">cylinder</span>(<span class="s">&quot;peg&quot;</span>, <span class="n">6</span>, <span class="n">20</span>), on=s3d.<span class="vb">grid</span>(n, <span class="n">1</span>, pitch), z=t)         <span class="c"># a copy per frame</span>
+    hook = s3d.<span class="vb">at</span>(s3d.<span class="vb">extrude</span>(<span class="s">&quot;hook&quot;</span>, s3d.<span class="vb">rect</span>(<span class="n">4</span>, <span class="n">12</span>), <span class="n">12</span>), x=n * pitch / <span class="n">2</span> - <span class="n">4</span>, z=t)
+    image = s3d.<span class="vb">transform</span>(s3d.<span class="vb">copy</span>(hook), mirror=<span class="s">&quot;x&quot;</span>)                                <span class="c"># its image across x = 0</span>
+    s3d.<span class="vb">join</span>(base, pegs, hook, image)                                                <span class="c"># a list is its elements</span>
+    s3d.<span class="vb">hole</span>(base, <span class="n">4</span>, on=s3d.<span class="vb">grid</span>(<span class="n">2</span>, <span class="n">1</span>, (n - <span class="n">1</span>) * pitch).move(y=depth / <span class="n">2</span> - <span class="n">6</span>))
+    s3d.<span class="vb">chamfer</span>(base, <span class="n">0.6</span>, edges=<span class="s">&quot;peg&quot;</span>)
+    <span class="k">return</span> base
+
+<span class="k">def</span> <span class="f">gate</span>(w=<span class="n">750</span>, h=<span class="n">1200</span>, post=<span class="n">100</span>):
+    l_post = s3d.<span class="vb">at</span>(s3d.<span class="vb">box</span>(<span class="s">&quot;post&quot;</span>, post, post, h + <span class="n">300</span>), x=-w - post / <span class="n">2</span>)
+    r_post = s3d.<span class="vb">transform</span>(s3d.<span class="vb">copy</span>(l_post), mirror=<span class="s">&quot;x&quot;</span>)
+    board = s3d.<span class="vb">at</span>(s3d.<span class="vb">box</span>(<span class="s">&quot;board&quot;</span>, w, <span class="n">40</span>, h), x=-w / <span class="n">2</span>, z=<span class="n">150</span>)                    <span class="c"># from the post to x = 0</span>
+    handle = s3d.<span class="vb">at</span>(s3d.<span class="vb">cylinder</span>(<span class="s">&quot;handle&quot;</span>, <span class="n">20</span>, <span class="n">60</span>), on=s3d.<span class="vb">bbox</span>(board, <span class="s">&quot;+Y&quot;</span>).move(x=<span class="n">60</span> - w / <span class="n">2</span>))  <span class="c"># near x = 0</span>
+    leaf = s3d.<span class="vb">group</span>(<span class="s">&quot;leaf&quot;</span>, board, handle)                                        <span class="c"># the handle moves with it</span>
+    s3d.<span class="vb">joint</span>(<span class="s">&quot;hinge&quot;</span>, leaf, s3d.<span class="vb">bbox</span>(l_post, <span class="s">&quot;+X+Y&quot;</span>), axis=<span class="s">&quot;+Z&quot;</span>, range=(<span class="n">0</span>, <span class="n">90</span>))   <span class="c"># the post&#x27;s edge it opens toward: +X turns toward +Y</span>
+    twin = s3d.<span class="vb">transform</span>(s3d.<span class="vb">copy</span>(leaf), mirror=<span class="s">&quot;x&quot;</span>)                               <span class="c"># its image, hinged at x = +w: opens toward +Y too</span>
+    gate = s3d.<span class="vb">assembly</span>(<span class="s">&quot;gate&quot;</span>, l_post, r_post, leaf, twin)
+    s3d.<span class="vb">pose</span>(leaf, <span class="n">60</span>)
+    <span class="k">return</span> gate</pre><p class="counts">38 lines · 837 tokens (o200k_base)</p></div>
+<pre id="raw" hidden># sand3d
+
+`import sand3d as s3d`; mm, or `units(&quot;m&quot;)` first. Makers take a name, return the solid; edits return
+it. Edges and faces go by their maker&#x27;s names (top bottom side rim seam start end cut, tool names,
+plate.top).
+
+1. A placement is a frame plus values. `at` sets the values it is given and keeps the others; `on=`
+   changes the frame, and x, y, z then run along its axes; `transform` moves the whole thing, as a parent
+   would, mirror included.
+2. To repeat, pass a list of frames to `on=`: once per frame, in `at`, `hole` and `pocket`.
+3. A list of objects is worth its elements, wherever a verb takes objects.
+4. What a verb uses up no longer exists. `copy` keeps it; always use what `at` returns.
+5. Every solid starts at z = 0, centred in x and y: `box` is the `extrude` of its `rect`; `extrude(both=True)`
+   centres one on its plane. A face&#x27;s frame starts where the origin projects onto it: a vertical face&#x27;s, at
+   its foot. A frame&#x27;s Z is the face&#x27;s normal; on a face whose normal is ±Z its X is +X, on any other
+   X is Z × normal: on a face looking +X, X is +Y and Y is up. A side, an edge or a corner of a box is
+   named by directions: `bbox(ob, &quot;+X&quot;)` is the centre of that side of its bounding box, `&quot;+X-Y&quot;` the
+   middle of an edge, `&quot;+X-Y+Z&quot;` a corner, with the axes of a face looking the first way named, on a part
+   or a group; `at`&#x27;s `anchor` takes the same (&quot;-Z&quot;, &quot;+Y-Z&quot;; its words top bottom left right front back
+   are +Z -Z -X +X -Y +Y).
+6. A joint lets a part move on another. Place the part first: `joint` does not move it, it says how it
+   moves — on the part its frame `on` was read on (`ob.face`, `bbox`, `local`, an assembly&#x27;s anchor; it
+   stays read on it through `.move`, `.turn`, `.offset`), about or along `axis`: a direction (&quot;+Z&quot;, &quot;-X&quot;…)
+   in the space the parent lives in, as in `face`, or &quot;normal&quot;, `on`&#x27;s Z. A pivot given as numbers — a
+   source&#x27;s joint origin, xyz and rpy — is `local(parent, x, y, z, rx, ry, rz)`, in the parent&#x27;s own space:
+   `at(child, on=…)` places the child there, `joint` hangs it there. Positive values slide along the axis,
+   or turn by the right hand about it: about +Z, +X turns toward +Y — a door hinged on the -Y edge of a +X
+   face opens outward about &quot;-Z&quot;. The range contains 0; a joint that follows another takes its range from
+   it. Everything is built at rest, every joint at 0; `pose(child, value)` moves the mechanism. A part with
+   no joint moves with its group; a jointed part moves by its joint, whatever group it is in; `on` is never
+   read on the child itself. Joints may come before or after `group`/`assembly`. `copy` copies a jointed
+   part&#x27;s joints (it hangs on the same parent); `transform` moves the part with its pivot (a mirror image
+   moves as the image of the motion); `at` refuses it. Two joints on one child compose in order (a screw: a
+   turn, and a slide that follows it with `ratio=pitch / 360`).
+
+```python
+# profiles
+rect(w, d, r=0, chamfer=0)  # Centred; corners rounded or cut
+circle(d)  # Centred
+ellipse(w, d)  # Centred
+slot(l, d)  # Round-ended slot along X
+polygon(n, d)  # Regular polygon, corner on +X
+poly(pts, fillet=0, chamfer=0)  # Outline through points, arcs, splines
+arc(center=(0, 0), r=1, start=0, end=360, *, through=None, to=None)  # Arc from start to end, anticlockwise if end &gt; start: a path, or a poly run
+tangent_arc(to)  # Poly run: arc leaving tangent
+spline(pts, closed=False, tangents=None, loop=False)  # Smooth curve; closed: a profile; loop: a ring path
+superellipse(w, d, n=2, taper=0)  # Ellipse (n=2) to box (n=4); taper narrows its +Y side, an egg
+station(z, w, d, x=0, y=0, n=2, taper=0)  # Loft section at height z; n and taper as superellipse
+text(s, size, font=None)  # Centred outline
+offset(p, t)  # Grown by t
+stroke(path, t)  # A band t wide along an open path, centred on it: a closed outline
+wrap(*profiles)  # Convex outline round profiles
+mirror(p, flip=&#x27;x&#x27;)  # Plus its image, flip negated
+# solids, paths
+extrude(name, profile, h=None, taper=0, twist=0, both=False, h2=None, on=None, until=None)  # Prism up Z (taper &gt; 0 narrows it upward), or until a plane or solid; on a face, by on
+revolve(name, profile, angle=360)  # X radius, Y height, turned about Z
+sweep(name, profile, path, scale=1, twist=0, frenet=False)  # Profile along a path
+loft(name, *sections, follow=False, loop=False)  # Through placed sections, capped; loop: a ring
+body(name, plan, top, bottom, n=2)  # Solid along Y from its views, where they draw it: plan (y, width), side top and bottom (y, z) or numbers; superellipse sections
+wire(name, path, d, closed=None, fillet=0)  # Round wire along a path: (x, y, z) points, a spline, an arc, a helix; fillet rounds the corners of points, d / 2 at least
+helix(d, pitch, h, left=False)  # Coil path up Z
+box(name, w, d, h)  # On Z = 0, centred in X and Y
+cylinder(name, d, h)  # Along Z, from Z = 0
+tube(name, d, d_in, h)  # Along Z, from Z = 0
+cone(name, d, h, d2=0)  # Along Z, from Z = 0
+sphere(name, d)  # On Z = 0
+wedge(name, w, d, h, top=0)  # Box narrowed on top
+torus(name, d, d_wire)  # Ring about Z, on Z = 0
+dome(name, d, h)  # Cap on Z = 0
+# edits
+cut(ob, *tools)  # Subtract tools
+join(ob, *others)  # Fuse others in; ob&#x27;s material wins: group keeps each its own
+intersect(ob, tool)  # Keep the common part
+split(ob, frame, keep=&#x27;above&#x27;)  # By a frame&#x27;s plane
+delete(ob)  # Remove it
+copy(ob)  # An independent copy, its joints with it
+hole(ob, d, on=(0, 0), depth=None, cbore=None, csk=None)  # On frames or points: through, or depth deep
+pocket(ob, profile, depth=None, on=None)  # Profile cut in from a face
+merge(*obs)  # No boolean
+scale(ob, s)  # About its origin
+fillet(ob, r, edges=&#x27;all&#x27;)  # Round named edges
+chamfer(ob, d, edges=&#x27;all&#x27;, d2=None, angle=None)  # Bevel named edges
+soften(ob, r, angle=30)  # Round all sharp edges
+shell(ob, t, open=None)  # Hollow; open named faces, or the flat faces looking &quot;+Y&quot;, &quot;-X +X&quot;
+dent(ob, points, r, depth)  # Press hollows at points
+# frames, placement
+Frame(origin=(0, 0, 0), normal=(0, 0, 1), up=None)  # A place to build on
+.offset(d) .turn(rx=0, ry=0, rz=0) .move(x=0, y=0, z=0) .point(x=0, y=0, z=0)
+ob.face(which)  # Frame of a named face, or furthest along &quot;+Z&quot;
+ob.edge(which)  # Path along the edges named which, in the space ob is in: the longest run (as long: the one reaching furthest -X, then -Y, -Z), closed if it closes
+bbox(ob, which)  # Frame on its bounding box: a side &quot;+X&quot;, an edge &quot;+X-Y&quot;, a corner &quot;+X-Y+Z&quot;
+local(ob, x=0, y=0, z=0, rx=0, ry=0, rz=0)  # Frame at (x, y, z) of its own space, turned (rx, ry, rz) degrees
+at(ob, x=None, y=None, z=None, rx=None, ry=None, rz=None, on=None, anchor=None)  # Place it: set what is given, keep the rest; anchor: &quot;-Z&quot;, &quot;+Y-Z&quot;…
+transform(ob, x=0, y=0, z=0, rx=0, ry=0, rz=0, mirror=None)  # Move it by, as a parent would; its placement, not its mesh
+grid(nx, ny=1, px=0, py=0, stagger=False, on=None)  # On a grid
+ring(n, r, start=0, angle=360, on=None)  # On a circle
+along(path, pitch=None, count=None)  # Along a path
+snap(targets, points, direction=None)  # On a surface
+# parts
+gear(name, teeth, module, width, bore=0, angle=20)  # Involute spur gear
+knurl(name, d, h, pitch=None, straight=False)  # Knurled grip; pitch 1 mm by default
+thread(name, d, length, pitch, left=False)  # Threaded rod
+# materials
+material(ob, kind, color=None, roughness=None, metallic=None, opacity=None, emission=None)  # Kind: oak walnut pine birch steel brushed_steel chrome aluminium brass copper painted_metal plastic glossy_plastic rubber glass ceramic fabric velvet leather marble concrete light; color &quot;#rrggbb&quot;
+# articulation
+joint(name, child, on, kind=&#x27;revolute&#x27;, axis=&#x27;normal&#x27;, range=None, follows=None, ratio=1)  # How child moves on the part on was read on: revolute (range in degrees), continuous (no range), prismatic (range in the unit), free (no axis, no range); follows: a child or a joint name, and this joint&#x27;s value is ratio × its (degrees per unit, or units per degree), no range; returns child
+pose(ob, value, joint=None)  # Move the mechanism: that joint to value (degrees or the unit), an error outside its range; what it carries follows; joint= when child has two
+seat(host, part)  # Take out of host the volume part fills, as it sits at rest; part untouched
+# assembly
+group(name, *children)  # Parent of children
+assembly(name, *children, **anchors)  # Parts and anchors
+attach(handle, name, *children)  # A detail, under a handle
+Handle(root, **anchors)  # Root and anchors
+export(root, path)  # root and what hangs on it by its joints, in metres: .glb at the current pose, joints in extras; .urdf a link per moving part, at rest, meshes beside it; .usda the URDF&#x27;s tree as OpenUSD text, with the materials; .obj and .stl its meshes at the current pose
+empty_scene()  # Fresh scene
+units(name=None)  # Length unit: &quot;mm&quot; (default), &quot;cm&quot;, &quot;m&quot;
+fingerprint()  # Digest of the source
+```
+
+```python
+def bracket(w=80, d=40, t=6, hole_d=6.6, pitch=50):
+    plate = s3d.extrude(&quot;plate&quot;, s3d.rect(w, d, r=4), t)
+    s3d.hole(plate, hole_d, on=s3d.grid(2, 1, pitch, 0))
+    s3d.fillet(plate, 1, edges=&quot;top&quot;)
+    return plate
+
+def lamp(stem_h=300):
+    base = s3d.revolve(&quot;base&quot;, [(0, 0), (70, 0), (60, 20), (0, 20)])
+    stem = s3d.at(s3d.cylinder(&quot;stem&quot;, 12, stem_h), on=base.face(&quot;top&quot;))
+    lamp = s3d.assembly(&quot;lamp&quot;, base, stem, head=s3d.Frame((0, 0, 20 + stem_h)))
+    add_shade(lamp)
+    return lamp
+
+def add_shade(lamp, d=180):
+    shade = s3d.shell(s3d.cone(&quot;shade&quot;, d, 120, d2=d / 2), 1.5, open=&quot;top bottom&quot;)
+    s3d.attach(lamp, &quot;shade&quot;, s3d.at(shade, on=lamp.head))
+
+def rack(n=4, pitch=30, depth=40, t=5):
+    base = s3d.extrude(&quot;base&quot;, s3d.rect(n * pitch, depth, r=3), t)
+    pegs = s3d.at(s3d.cylinder(&quot;peg&quot;, 6, 20), on=s3d.grid(n, 1, pitch), z=t)         # a copy per frame
+    hook = s3d.at(s3d.extrude(&quot;hook&quot;, s3d.rect(4, 12), 12), x=n * pitch / 2 - 4, z=t)
+    image = s3d.transform(s3d.copy(hook), mirror=&quot;x&quot;)                                # its image across x = 0
+    s3d.join(base, pegs, hook, image)                                                # a list is its elements
+    s3d.hole(base, 4, on=s3d.grid(2, 1, (n - 1) * pitch).move(y=depth / 2 - 6))
+    s3d.chamfer(base, 0.6, edges=&quot;peg&quot;)
+    return base
+
+def gate(w=750, h=1200, post=100):
+    l_post = s3d.at(s3d.box(&quot;post&quot;, post, post, h + 300), x=-w - post / 2)
+    r_post = s3d.transform(s3d.copy(l_post), mirror=&quot;x&quot;)
+    board = s3d.at(s3d.box(&quot;board&quot;, w, 40, h), x=-w / 2, z=150)                    # from the post to x = 0
+    handle = s3d.at(s3d.cylinder(&quot;handle&quot;, 20, 60), on=s3d.bbox(board, &quot;+Y&quot;).move(x=60 - w / 2))  # near x = 0
+    leaf = s3d.group(&quot;leaf&quot;, board, handle)                                        # the handle moves with it
+    s3d.joint(&quot;hinge&quot;, leaf, s3d.bbox(l_post, &quot;+X+Y&quot;), axis=&quot;+Z&quot;, range=(0, 90))   # the post&#x27;s edge it opens toward: +X turns toward +Y
+    twin = s3d.transform(s3d.copy(leaf), mirror=&quot;x&quot;)                               # its image, hinged at x = +w: opens toward +Y too
+    gate = s3d.assembly(&quot;gate&quot;, l_post, r_post, leaf, twin)
+    s3d.pose(leaf, 60)
+    return gate
+```
+</pre>
+
+<div class="fin"><span>sand3d 1.6.1 · Apache-2.0 · <a href="https://github.com/Sandflow-ai/sand3d">source</a></span>
+<img src="assets/sandflow-signature.svg" alt="Sandflow"></div>
+</div><script>
+document.querySelectorAll("[data-copy]").forEach(b => b.addEventListener("click", () => {
+  const text = document.getElementById(b.dataset.copy).textContent;
+  navigator.clipboard.writeText(text).then(() => { const t = b.textContent; b.textContent = "Copied";
+    setTimeout(() => b.textContent = t, 1400); });
+}));
+</script></body></html>

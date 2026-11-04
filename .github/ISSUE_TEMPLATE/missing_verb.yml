@@ -1,0 +1,17 @@
+name: A shape no verb can say
+description: What you wanted to write, and the verb it needs.
+labels: [vocabulary]
+body:
+  - type: textarea
+    id: shape
+    attributes:
+      label: The shape
+      description: What you wanted to build; a picture or a CAD source helps.
+    validations:
+      required: true
+  - type: textarea
+    id: program
+    attributes:
+      label: The program you wanted to write
+      description: As if the verb existed.
+      render: python

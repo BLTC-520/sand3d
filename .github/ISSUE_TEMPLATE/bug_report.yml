@@ -1,0 +1,25 @@
+name: A wrong shape or an error
+description: A program builds the wrong thing, or fails where it should not.
+labels: [bug]
+body:
+  - type: textarea
+    id: program
+    attributes:
+      label: The program
+      description: The smallest program that shows it.
+      render: python
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What it does, and what you expected
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: "`s3d.__version__`, `bpy.app.version_string`, the OS"
+    validations:
+      required: true

@@ -1,0 +1,31 @@
+[project]
+name = "sand3d"
+dynamic = ["version"]
+description = "3D modeling in Python, built for LLMs: short programs over Blender's bpy."
+readme = "README.md"
+# bpy ships one CPython per release line: 4.5 LTS for 3.11, 5.2 LTS for 3.13 (none for 3.12).
+# The two lines the suite runs, each on its Python; 5.0 and 5.1 are left out: untested.
+requires-python = ">=3.11,!=3.12.*,<3.14"
+dependencies = [
+    "bpy>=4.5,<4.6; python_version == '3.11'",
+    "bpy>=5.2,<5.3; python_version == '3.13'",
+]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+
+[project.urls]
+Homepage = "https://sandflow-ai.github.io/sand3d/"
+Documentation = "https://sandflow-ai.github.io/sand3d/api.html"
+Repository = "https://github.com/Sandflow-ai/sand3d"
+Issues = "https://github.com/Sandflow-ai/sand3d/issues"
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+version = {attr = "sand3d.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["sand3d*"]

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sand3d: writing an assembly program</title>
+<meta name="description" content="3D modeling in Python, built for LLMs.">
+<link rel="icon" href="assets/sandflow-symbol-black.svg">
+<link rel="stylesheet" href="assets/site.css">
+</head><body><div class="page">
+<div class="nav"><a href="index.html"><img class="marque" src="assets/sandflow-signature.svg" alt="Sandflow"></a><nav><a href="index.html">Home</a><a href="gallery.html">Gallery</a><a href="quickstart.html">Quickstart</a><a href="api.html">API for LLMs</a><a href="https://github.com/Sandflow-ai/sand3d">GitHub</a></nav></div>
+
+<p class="repere">Writing an assembly</p>
+<h1>Writing an assembly program</h1>
+<div class="bande"></div>
+<p>Eight rules for any program that builds a multi-part object in sand3d, by hand or by model. They were drawn from a review of generated asset and articulated programs, and have not been tested as a prompt. Every example is a real program, run under 1.4.0, when sand3d was still named sky3d. A fault is followed by how it should have been written: <code># ←</code> comments are added to the original, and rewrites keep the original's shape.</p>
+<ol><li><strong>The head is the table of contents.</strong> First function, named after the object, no geometry.</li><li><strong>One function per distinct part.</strong> Built about its own origin; returns one object.</li><li><strong>Name each dimension once, derive the rest.</strong> Target 15 numbers per part, ceiling 40.</li><li><strong>Place each part once, in its parent's frame.</strong></li><li><strong>Repeat with frames, mirror with a copy.</strong></li><li><strong>Say each shape with the verb that names it.</strong> No <code>bpy</code>, no <code>bmesh</code>.</li><li><strong>Dress the parts when appearance matters.</strong> Optional on shape-only data.</li><li><strong>One frame per joint.</strong></li></ol>
+<h2 id="what-a-program-looks-like">What a program looks like</h2>
+<p>A short head, then one function per part, each with its dimensions in its signature.</p>
+<div class="fiche"><pre class="code"><span class="k">import</span> sand3d <span class="k">as</span> s3d
+
+
+<span class="k">def</span> <span class="f">floor_lamp</span>():
+    base = s3d.<span class="vb">at</span>(round_base(), z=-<span class="n">801</span>)  <span class="c"># ← better: stand the stem on the base, derived from it</span>
+    stem = s3d.<span class="vb">at</span>(slender_stem(), z=-<span class="n">774</span>)  <span class="c"># ← better: 27 above the base, not a second measured height</span>
+    <span class="k">return</span> s3d.<span class="vb">assembly</span>(<span class="s">&quot;floor_lamp&quot;</span>, base, stem)
+
+
+<span class="k">def</span> <span class="f">round_base</span>(d=<span class="n">202</span>, h=<span class="n">30</span>, edge_r=<span class="n">6</span>, collar_d=<span class="n">68</span>, collar_h=<span class="n">9</span>):
+    base = s3d.<span class="vb">cylinder</span>(<span class="s">&quot;base&quot;</span>, d=d, h=h)
+    base = s3d.<span class="vb">fillet</span>(base, r=edge_r)  <span class="c"># ← accidental relation: the taper has nothing to do with the fillet</span>
+    collar = s3d.<span class="vb">at</span>(s3d.<span class="vb">cone</span>(<span class="s">&quot;collar&quot;</span>, d=collar_d, d2=collar_d-edge_r*<span class="n">2</span>, h=collar_h), z=h-<span class="n">1</span>)
+    base = s3d.<span class="vb">join</span>(base, collar)
+    s3d.<span class="vb">material</span>(base, <span class="s">&quot;painted_metal&quot;</span>, color=<span class="s">&quot;#606060&quot;</span>)
+    <span class="k">return</span> s3d.<span class="vb">group</span>(<span class="s">&quot;round_base&quot;</span>, base)
+
+
+<span class="k">def</span> <span class="f">slender_stem</span>(d=<span class="n">29</span>, h=<span class="n">1419</span>, shade_z=<span class="n">1300</span>):
+    stem = s3d.<span class="vb">cylinder</span>(<span class="s">&quot;stem&quot;</span>, d=d, h=h)
+    s3d.<span class="vb">material</span>(stem, <span class="s">&quot;painted_metal&quot;</span>, color=<span class="s">&quot;#595959&quot;</span>)
+    shade = s3d.<span class="vb">at</span>(open_shade(), z=shade_z)
+    <span class="k">return</span> s3d.<span class="vb">group</span>(<span class="s">&quot;slender_stem&quot;</span>, stem, shade)
+
+
+<span class="k">def</span> <span class="f">open_shade</span>(d=<span class="n">330.3</span>, top_d=<span class="n">320</span>, h=<span class="n">273</span>, bottom_wall=<span class="n">6</span>, top_wall=<span class="n">13</span>):
+    wall = s3d.<span class="vb">revolve</span>(<span class="s">&quot;shade_wall&quot;</span>, s3d.<span class="vb">poly</span>([(d/<span class="n">2</span>,<span class="n">0</span>),(top_d/<span class="n">2</span>,h),(top_d/<span class="n">2</span>-top_wall,h),(d/<span class="n">2</span>-bottom_wall,<span class="n">0</span>)]))
+    s3d.<span class="vb">material</span>(wall, <span class="s">&quot;fabric&quot;</span>, color=<span class="s">&quot;#cfc5b6&quot;</span>)
+    <span class="k">return</span> s3d.<span class="vb">group</span>(<span class="s">&quot;open_shade&quot;</span>, wall)  <span class="c"># ← one solid at its origin: return wall would do</span></pre></div>
+<h2 id="1-the-head-is-the-table-of-contents">1. The head is the table of contents</h2>
+<p>The first function is named after the object. It builds no geometry: it calls the parts, places them and returns <code>s3d.assembly</code>. Runners call the first function, so the head comes first. Nothing at module level but the import. A detail that should stay deletable can hang on the assembly with <code>attach</code>, as in <a href="https://github.com/Sandflow-ai/sand3d/blob/main/docs/examples/chair.py">examples/chair.py</a>; none of the 1 089 programs needed it.</p>
+<p><strong>Right</strong>: a picnic table.</p>
+<div class="fiche"><pre class="code"><span class="k">def</span> <span class="f">picnic_table</span>():
+    top = s3d.<span class="vb">at</span>(tabletop(), z=<span class="n">788</span>)
+    frame = s3d.<span class="vb">at</span>(end_frame(), x=<span class="n">659</span>, z=<span class="n">3</span>)
+    twin = s3d.<span class="vb">transform</span>(s3d.<span class="vb">copy</span>(frame), mirror=<span class="s">&quot;x&quot;</span>)
+    seats = s3d.<span class="vb">at</span>(benches(), z=<span class="n">447</span>)
+    <span class="k">return</span> s3d.<span class="vb">assembly</span>(<span class="s">&quot;picnic_table&quot;</span>, top, frame, twin, seats)</pre></div>
+<p><strong>Wrong</strong>: a turnstile.</p>
+<div class="fiche"><pre class="code"><span class="k">def</span> <span class="f">industrial_turnstile_gate</span>():
+    base = s3d.<span class="vb">extrude</span>(<span class="s">&quot;floor_plate&quot;</span>, s3d.<span class="vb">rect</span>(<span class="n">2700</span>, <span class="n">2700</span>), <span class="n">60</span>, both=<span class="k">True</span>)
+    frame = s3d.<span class="vb">group</span>(<span class="s">&quot;frame&quot;</span>, s3d.<span class="vb">at</span>(base, z=<span class="n">30</span>))
+    rotor = s3d.<span class="vb">group</span>(
+        <span class="s">&quot;rotor&quot;</span>, s3d.<span class="vb">at</span>(s3d.<span class="vb">extrude</span>(<span class="s">&quot;spindle_shaft&quot;</span>, s3d.<span class="vb">circle</span>(<span class="n">96</span>), <span class="n">760</span>, both=<span class="k">True</span>), z=<span class="n">350</span>)
+    )
+    f = s3d.<span class="vb">local</span>(frame, z=<span class="n">800</span>)
+    rotor = s3d.<span class="vb">at</span>(rotor, on=f)
+    s3d.<span class="vb">joint</span>(<span class="s">&quot;frame_to_rotor&quot;</span>, rotor, f, kind=<span class="s">&quot;revolute&quot;</span>, axis=<span class="s">&quot;+Z&quot;</span>, range=(-<span class="n">120</span>, <span class="n">120</span>))</pre></div>
+<p>The head is building a floor plate and a shaft. A reader must go through solids to find the plan, and no part can be reused or removed.</p>
+<p><strong>How it should read</strong>: one line per part in the head. Same shape (F 1.000 against the original).</p>
+<div class="fiche"><pre class="code"><span class="k">def</span> <span class="f">industrial_turnstile_gate</span>():
+    frame = frame_part()
+    f = s3d.<span class="vb">local</span>(frame, z=<span class="n">800</span>)
+    rotor = s3d.<span class="vb">at</span>(rotor_part(), on=f)
+    s3d.<span class="vb">joint</span>(<span class="s">&quot;frame_to_rotor&quot;</span>, rotor, f, kind=<span class="s">&quot;revolute&quot;</span>, axis=<span class="s">&quot;+Z&quot;</span>, range=(-<span class="n">120</span>, <span class="n">120</span>))
+    p = s3d.<span class="vb">local</span>(frame, x=<span class="n">535</span>, y=-<span class="n">355</span>, z=<span class="n">1345</span>)
+    pawl = s3d.<span class="vb">at</span>(pawl_part(), on=p)
+    s3d.<span class="vb">joint</span>(<span class="s">&quot;frame_to_lockout&quot;</span>, pawl, p, kind=<span class="s">&quot;revolute&quot;</span>, axis=<span class="s">&quot;normal&quot;</span>, range=(<span class="n">0</span>, <span class="n">46</span>))
+    <span class="k">return</span> s3d.<span class="vb">assembly</span>(<span class="s">&quot;industrial_turnstile_gate&quot;</span>, frame, rotor, pawl)
+...
+<span class="k">def</span> <span class="f">frame_part</span>(w=<span class="n">2700</span>, t=<span class="n">60</span>):
+    base = s3d.<span class="vb">extrude</span>(<span class="s">&quot;floor_plate&quot;</span>, s3d.<span class="vb">rect</span>(w, w), t, both=<span class="k">True</span>)
+    <span class="k">return</span> s3d.<span class="vb">group</span>(<span class="s">&quot;frame&quot;</span>, s3d.<span class="vb">at</span>(base, z=t / <span class="n">2</span>))
+...
+<span class="k">def</span> <span class="f">rotor_part</span>(d=<span class="n">96</span>, h=<span class="n">760</span>, z=<span class="n">350</span>):
+    shaft = s3d.<span class="vb">extrude</span>(<span class="s">&quot;spindle_shaft&quot;</span>, s3d.<span class="vb">circle</span>(d), h, both=<span class="k">True</span>)
+    <span class="k">return</span> s3d.<span class="vb">group</span>(<span class="s">&quot;rotor&quot;</span>, s3d.<span class="vb">at</span>(shaft, z=z))
+...
+<span class="k">def</span> <span class="f">pawl_part</span>(length=<span class="n">305</span>, w=<span class="n">20</span>, h=<span class="n">40</span>, x=-<span class="n">182.5</span>):
+    bar = s3d.<span class="vb">extrude</span>(<span class="s">&quot;pawl_bar&quot;</span>, s3d.<span class="vb">rect</span>(length, w), h, both=<span class="k">True</span>)
+    <span class="k">return</span> s3d.<span class="vb">group</span>(<span class="s">&quot;lockout_pawl&quot;</span>, s3d.<span class="vb">at</span>(bar, x=x))</pre></div>
+<h2 id="2-one-function-per-distinct-part">2. One function per distinct part</h2>
+<p>A part builds about its own origin, takes what differs as arguments, and returns one object. Which one depends on how its pieces hold together:</p>
+<table><tr><th>the pieces</th><th>the verb</th><th>what you get</th></tr><tr><td>fused for good</td><td><code>join</code></td><td>one solid, one material: the first object's</td></tr><tr><td>separate, moving together</td><td><code>group</code></td><td>each piece keeps its mesh and its material</td></tr><tr><td>moving against each other</td><td><code>joint</code></td><td>parts hung on frames, in the head (rule 8)</td></tr></table>
+<p><code>assembly</code> is the top-level <code>group</code>, plus the anchors it publishes. One solid needs no group: return the solid. The trap: a lone solid placed inside its function loses that placement at the next <code>at</code> (<code>z=50</code> then <code>z=100</code> lands at 100, and in a group at 150). Build a lone solid at its origin.</p>
+<p><strong>Right</strong>: one function, three levers.</p>
+<div class="fiche"><pre class="code">    lever1 = lever_part(<span class="n">150</span>, <span class="s">&quot;lever1&quot;</span>, <span class="s">&quot;#cc3333&quot;</span>)
+    lever2 = lever_part(<span class="n">120</span>, <span class="s">&quot;lever2&quot;</span>, <span class="s">&quot;#33cc33&quot;</span>)
+    lever3 = lever_part(<span class="n">100</span>, <span class="s">&quot;lever3&quot;</span>, <span class="s">&quot;#3333cc&quot;</span>)</pre></div>
+<p><strong>Wrong</strong>: a seesaw.</p>
+<div class="fiche"><pre class="code">    end = s3d.<span class="vb">at</span>(end_crossrail(), y=-<span class="n">1143</span>, z=<span class="n">134</span>)
+    other = s3d.<span class="vb">at</span>(opposite_crossrail(), y=<span class="n">1143</span>, z=<span class="n">134</span>)
+...
+<span class="k">def</span> <span class="f">end_crossrail</span>(width=<span class="n">325</span>, d=<span class="n">31</span>, height=<span class="n">182</span>, stem_d=<span class="n">29</span>):
+    solid = s3d.<span class="vb">wire</span>(<span class="s">&#x27;crossrail&#x27;</span>, path=[(-width/<span class="n">2</span>+d/<span class="n">2</span>,<span class="n">0</span>,height-d/<span class="n">2</span>),(width/<span class="n">2</span>-d/<span class="n">2</span>,<span class="n">0</span>,height-d/<span class="n">2</span>)], d=d)
+    stem = s3d.<span class="vb">cylinder</span>(<span class="s">&#x27;upright&#x27;</span>, d=stem_d, h=height-d/<span class="n">2</span>)
+    s3d.<span class="vb">join</span>(solid, stem)
+    s3d.<span class="vb">material</span>(solid, <span class="s">&#x27;painted_metal&#x27;</span>, color=<span class="s">&#x27;#4c71ae&#x27;</span>)
+    <span class="k">return</span> s3d.<span class="vb">group</span>(<span class="s">&#x27;end_crossrail&#x27;</span>, solid)
+...
+<span class="k">def</span> <span class="f">opposite_crossrail</span>(width=<span class="n">325</span>, d=<span class="n">31</span>, height=<span class="n">182</span>, stem_d=<span class="n">29</span>):  <span class="c"># ← the same six lines as end_crossrail</span>
+    solid = s3d.<span class="vb">wire</span>(<span class="s">&#x27;crossrail&#x27;</span>, path=[(-width/<span class="n">2</span>+d/<span class="n">2</span>,<span class="n">0</span>,height-d/<span class="n">2</span>),(width/<span class="n">2</span>-d/<span class="n">2</span>,<span class="n">0</span>,height-d/<span class="n">2</span>)], d=d)
+    stem = s3d.<span class="vb">cylinder</span>(<span class="s">&#x27;upright&#x27;</span>, d=stem_d, h=height-d/<span class="n">2</span>)
+    s3d.<span class="vb">join</span>(solid, stem)
+    s3d.<span class="vb">material</span>(solid, <span class="s">&#x27;painted_metal&#x27;</span>, color=<span class="s">&#x27;#4c71ae&#x27;</span>)
+    <span class="k">return</span> s3d.<span class="vb">group</span>(<span class="s">&#x27;opposite_crossrail&#x27;</span>, solid)</pre></div>
+<p>Nothing here crashes. These are one function under two names: a change has to be made twice, and a reader has to compare them line by line to learn they are the same.</p>
+<p><strong>How it should read</strong>: one function, the other side mirrored (rule 5). Same shape (F 1.000 against the original).</p>
+<div class="fiche"><pre class="code">    end = s3d.<span class="vb">at</span>(end_crossrail(), y=-<span class="n">1143</span>, z=<span class="n">134</span>)
+    other = s3d.<span class="vb">transform</span>(s3d.<span class="vb">copy</span>(end), mirror=<span class="s">&quot;y&quot;</span>)
+...
+<span class="k">def</span> <span class="f">end_crossrail</span>(width=<span class="n">325</span>, d=<span class="n">31</span>, height=<span class="n">182</span>, stem_d=<span class="n">29</span>):
+    solid = s3d.<span class="vb">wire</span>(<span class="s">&#x27;crossrail&#x27;</span>, path=[(-width/<span class="n">2</span>+d/<span class="n">2</span>,<span class="n">0</span>,height-d/<span class="n">2</span>),(width/<span class="n">2</span>-d/<span class="n">2</span>,<span class="n">0</span>,height-d/<span class="n">2</span>)], d=d)
+    stem = s3d.<span class="vb">cylinder</span>(<span class="s">&#x27;upright&#x27;</span>, d=stem_d, h=height-d/<span class="n">2</span>)
+    s3d.<span class="vb">join</span>(solid, stem)
+    s3d.<span class="vb">material</span>(solid, <span class="s">&#x27;painted_metal&#x27;</span>, color=<span class="s">&#x27;#4c71ae&#x27;</span>)
+    <span class="k">return</span> s3d.<span class="vb">group</span>(<span class="s">&#x27;end_crossrail&#x27;</span>, solid)</pre></div>
+<h2 id="3-name-each-dimension-once-derive-the-rest">3. Name each dimension once, derive the rest</h2>
+<p>Main dimensions are keyword arguments in millimetres. A value measured on the target appears once. A value that follows from another is written as an expression of it.</p>
+<ul><li><strong>Count the numbers.</strong> Target 15 per part, ceiling 40. A number is any numeric literal, keyword defaults included, except 0, 0.5, 1, 2, 45, 90, 180, 270 and 360. Clean programs have a median of 15, programs that fought the library 53.</li><li><strong>Read every argument.</strong> 31.0 % of the programs declare a dimension they never read.</li><li><strong>No <code>if x == 28</code>, no unexplained fraction.</strong> They hold only while the numbers around them stay put.</li><li><strong>Expect to lose a little fidelity.</strong> Fewer numbers means a coarser match to a target. It is a trade.</li><li><strong>Copying a value from a source is allowed, once.</strong> A joint origin copied from a URDF is a measurement.</li></ul>
+<p><strong>Right</strong>: each point an expression of the arguments.</p>
+<div class="fiche"><pre class="code">    profile = s3d.<span class="vb">poly</span>([(d/<span class="n">2</span>,<span class="n">0</span>), (d/<span class="n">2</span>,shoulder), (mouth_d/<span class="n">2</span>,h), (mouth_d/<span class="n">2</span>-wall,h), (d/<span class="n">2</span>-wall,shoulder), (d/<span class="n">2</span>-wall,<span class="n">0</span>)])
+    neck = s3d.<span class="vb">revolve</span>(<span class="s">&quot;neck&quot;</span>, profile)
+    s3d.<span class="vb">material</span>(neck, kind=<span class="s">&quot;steel&quot;</span>, color=<span class="s">&quot;#888888&quot;</span>)</pre></div>
+<p><strong>Wrong</strong>: a freezer cabinet.</p>
+<div class="fiche"><pre class="code"><span class="k">def</span> <span class="f">cabinet_part</span>(width=<span class="n">1500</span>, depth=<span class="n">800</span>, height=<span class="n">940</span>):
+    shell = s3d.<span class="vb">extrude</span>(<span class="s">&quot;shell&quot;</span>, s3d.<span class="vb">rect</span>(width, depth), height, both=<span class="k">True</span>)
+    shell = s3d.<span class="vb">at</span>(shell, z=height / <span class="n">2</span>)
+    inner = s3d.<span class="vb">at</span>(
+        s3d.<span class="vb">extrude</span>(<span class="s">&quot;inner_tool&quot;</span>, s3d.<span class="vb">rect</span>(width - <span class="n">100</span>, depth - <span class="n">100</span>), height - <span class="n">90</span>, both=<span class="k">True</span>), z=<span class="n">475</span>
+    )
+    s3d.<span class="vb">cut</span>(shell, inner)
+    tool1 = s3d.<span class="vb">at</span>(s3d.<span class="vb">extrude</span>(<span class="s">&quot;slot_tool1&quot;</span>, s3d.<span class="vb">rect</span>(<span class="n">1440</span>, <span class="n">720</span>), <span class="n">20</span>, both=<span class="k">True</span>), z=<span class="n">910</span>)
+    s3d.<span class="vb">cut</span>(shell, tool1)
+    tool2 = s3d.<span class="vb">at</span>(s3d.<span class="vb">extrude</span>(<span class="s">&quot;slot_tool2&quot;</span>, s3d.<span class="vb">rect</span>(<span class="n">1440</span>, <span class="n">740</span>), <span class="n">20</span>, both=<span class="k">True</span>), z=<span class="n">930</span>)
+    s3d.<span class="vb">cut</span>(shell, tool2)</pre></div>
+<p>It runs and matches its target. But 475, 1440, 720, 740, 910 and 930 all follow from <code>width</code>, <code>depth</code> and <code>height</code>: change the height and the cabinet breaks.</p>
+<p><strong>How it should read</strong>: three named dimensions, the rest derived. Same shape (F 1.000 against the original).</p>
+<div class="fiche"><pre class="code"><span class="k">def</span> <span class="f">cabinet_part</span>(width=<span class="n">1500</span>, depth=<span class="n">800</span>, height=<span class="n">940</span>, wall=<span class="n">50</span>, lip=<span class="n">30</span>, slot=<span class="n">20</span>):
+    shell = s3d.<span class="vb">extrude</span>(<span class="s">&quot;shell&quot;</span>, s3d.<span class="vb">rect</span>(width, depth), height, both=<span class="k">True</span>)
+    shell = s3d.<span class="vb">at</span>(shell, z=height / <span class="n">2</span>)
+    well = height - <span class="n">2</span> * slot - wall
+    inner = s3d.<span class="vb">at</span>(
+        s3d.<span class="vb">extrude</span>(<span class="s">&quot;inner_tool&quot;</span>, s3d.<span class="vb">rect</span>(width - <span class="n">2</span> * wall, depth - <span class="n">2</span> * wall), well, both=<span class="k">True</span>),
+        z=wall + well / <span class="n">2</span>,
+    )
+    s3d.<span class="vb">cut</span>(shell, inner)
+    open_w, open_d = width - <span class="n">2</span> * lip, depth - <span class="n">2</span> * lip
+    tool1 = s3d.<span class="vb">at</span>(
+        s3d.<span class="vb">extrude</span>(<span class="s">&quot;slot_tool1&quot;</span>, s3d.<span class="vb">rect</span>(open_w, open_d - slot), slot, both=<span class="k">True</span>),
+        z=height - <span class="n">1.5</span> * slot,
+    )
+    s3d.<span class="vb">cut</span>(shell, tool1)
+    tool2 = s3d.<span class="vb">at</span>(
+        s3d.<span class="vb">extrude</span>(<span class="s">&quot;slot_tool2&quot;</span>, s3d.<span class="vb">rect</span>(open_w, open_d), slot, both=<span class="k">True</span>),
+        z=height - slot / <span class="n">2</span>,
+    )
+    s3d.<span class="vb">cut</span>(shell, tool2)</pre></div>
+<h2 id="4-place-each-part-once-in-its-parent-s-frame">4. Place each part once, in its parent's frame</h2>
+<p>The head places the top-level parts with <code>at</code>, in the object's frame. Each part places its own children. A placement that follows from a dimension is written from it. The fault is a part built at its world position, then shifted back.</p>
+<ul><li>Prefer a frame when the relation is the point: <code>on=ob.face(&quot;+Z&quot;)</code>, <code>bbox</code>, <code>local</code>.</li><li>Every solid starts at z = 0, centred in x and y; <code>extrude(both=True)</code> centres it on its plane.</li><li><code>at</code> sets the values it is given and keeps the others. <code>transform</code> moves by.</li></ul>
+<p><strong>Right</strong>: the bowl sits at the stem’s height.</p>
+<div class="fiche"><pre class="code"><span class="k">def</span> <span class="f">stem</span>(h=<span class="n">70</span>, waist=<span class="n">6.5</span>, overlap=<span class="n">0.5</span>):
+    solid = s3d.<span class="vb">revolve</span>(<span class="s">&quot;stem&quot;</span>, s3d.<span class="vb">poly</span>([(<span class="n">0</span>,<span class="n">0</span>),(<span class="n">14</span>,<span class="n">0</span>),(<span class="n">7.5</span>,<span class="n">14</span>),(waist,<span class="n">34</span>),(<span class="n">9</span>,<span class="n">57</span>),(<span class="n">16</span>,h+overlap),(<span class="n">0</span>,h+overlap)]))
+    s3d.<span class="vb">material</span>(solid, <span class="s">&quot;plastic&quot;</span>, color=<span class="s">&quot;#737373&quot;</span>)
+    bowl_placed = s3d.<span class="vb">at</span>(bowl(), z=h)
+    <span class="k">return</span> s3d.<span class="vb">group</span>(<span class="s">&quot;stem_group&quot;</span>, solid, bowl_placed)</pre></div>
+<p><strong>Wrong</strong>: glasses.</p>
+<div class="fiche"><pre class="code">    arm = s3d.<span class="vb">at</span>(temple_arm(), x=<span class="n">64.5</span>, y=-<span class="n">14.6</span>, z=<span class="n">37.5</span>)
+...
+<span class="k">def</span> <span class="f">temple_arm</span>(w=<span class="n">3</span>, length=<span class="n">119.2</span>, base=<span class="n">37.5</span>, origin_y=-<span class="n">14.6</span>, origin_x=<span class="n">64.5</span>):
+    path = s3d.<span class="vb">spline</span>([(<span class="n">62</span>-origin_x,-<span class="n">72</span>-origin_y,<span class="n">55</span>-base),(<span class="n">63</span>-origin_x,-<span class="n">45</span>-origin_y,<span class="n">54</span>-base),(<span class="n">66</span>-origin_x,<span class="n">0</span>-origin_y,<span class="n">54</span>-base),(<span class="n">66</span>-origin_x,<span class="n">20</span>-origin_y,<span class="n">53</span>-base),(<span class="n">65</span>-origin_x,<span class="n">32</span>-origin_y,<span class="n">46</span>-base),(<span class="n">65</span>-origin_x,<span class="n">44</span>-origin_y,<span class="n">40</span>-base)])</pre></div>
+<p>The head places the arm at (64.5, -14.6, 37.5), and the part takes those same numbers off every point. Each coordinate is written in the world, then undone.</p>
+<p><strong>How it should read</strong>: the spline in the arm’s own frame. Same shape (F 1.000 against the original).</p>
+<div class="fiche"><pre class="code">    arm = s3d.<span class="vb">at</span>(temple_arm(), x=<span class="n">64.5</span>, y=-<span class="n">14.6</span>, z=<span class="n">37.5</span>)
+...
+<span class="k">def</span> <span class="f">temple_arm</span>(w=<span class="n">3</span>, d=<span class="n">5</span>):
+    path = s3d.<span class="vb">spline</span>([(-<span class="n">2.5</span>,-<span class="n">57.4</span>,<span class="n">17.5</span>),(-<span class="n">1.5</span>,-<span class="n">30.4</span>,<span class="n">16.5</span>),(<span class="n">1.5</span>,<span class="n">14.6</span>,<span class="n">16.5</span>),(<span class="n">1.5</span>,<span class="n">34.6</span>,<span class="n">15.5</span>),(<span class="n">0.5</span>,<span class="n">46.6</span>,<span class="n">8.5</span>),(<span class="n">0.5</span>,<span class="n">58.6</span>,<span class="n">2.5</span>)])</pre></div>
+<h2 id="5-repeat-with-frames-mirror-with-a-copy">5. Repeat with frames, mirror with a copy</h2>
+<p>Copies go through <code>on=s3d.grid(…)</code>, <code>ring(…)</code> or <code>along(…)</code>. The other side of a pair is <code>s3d.transform(s3d.copy(placed), mirror=&quot;x&quot;)</code>. <code>at</code> is for a place, <code>transform</code> for a mirror image. Never cos and sin in a loop.</p>
+<p><strong>Right</strong>: a ring of rods.</p>
+<div class="fiche"><pre class="code">    rods = s3d.<span class="vb">at</span>(s3d.<span class="vb">cylinder</span>(<span class="s">&quot;rod&quot;</span>, d=rod_d, h=h), on=s3d.<span class="vb">ring</span>(n=count, r=radius))</pre></div>
+<p><strong>Right</strong>: two mirrored pairs.</p>
+<div class="fiche"><pre class="code">    end = s3d.<span class="vb">at</span>(end_panel(), x=end_x, z=<span class="n">0</span>)
+    twin = s3d.<span class="vb">transform</span>(s3d.<span class="vb">copy</span>(end), mirror=<span class="s">&quot;x&quot;</span>)
+...
+    feet = s3d.<span class="vb">at</span>(corner_feet(), x=foot_x, z=foot_z)
+    other_feet = s3d.<span class="vb">transform</span>(s3d.<span class="vb">copy</span>(feet), mirror=<span class="s">&quot;x&quot;</span>)</pre></div>
+<p><strong>Wrong</strong>: a bunk frame.</p>
+<div class="fiche"><pre class="code">    <span class="k">for</span> y <span class="k">in</span> (-<span class="n">233</span>, -<span class="n">140</span>, -<span class="n">47</span>):
+        solids.append(s3d.<span class="vb">at</span>(s3d.<span class="vb">box</span>(<span class="s">&quot;return_post&quot;</span>, w=rail, d=rail, h=h-rail), x=w/<span class="n">2</span>-rail/<span class="n">2</span>, y=y))</pre></div>
+<p>Three posts at an even pitch of 93. A list of three positions hides that they are evenly spaced.</p>
+<p><strong>How it should read</strong>: the pitch named, the grid says the rest. Same shape (F 1.000 against the original).</p>
+<div class="fiche"><pre class="code">    solids += s3d.<span class="vb">at</span>(s3d.<span class="vb">box</span>(<span class="s">&quot;return_post&quot;</span>, w=rail, d=rail, h=h-rail), on=s3d.<span class="vb">grid</span>(nx=<span class="n">1</span>, ny=<span class="n">3</span>, py=post_pitch), x=w/<span class="n">2</span>-rail/<span class="n">2</span>, y=-<span class="n">140</span>)</pre></div>
+<h2 id="6-say-each-shape-with-the-verb-that-names-it">6. Say each shape with the verb that names it</h2>
+<p>A shape sand3d says in one verb is not written as a table of points. <code>bpy</code> and <code>bmesh</code> are forbidden: if sand3d cannot say a shape, open an issue for the missing verb. Free forms still resist: until sand3d has their verbs, a table may match a target better.</p>
+<table><tr><th>the shape</th><th>the verb</th></tr><tr><td>round about an axis</td><td><code>revolve(name, profile)</code></td></tr><tr><td>hollow, open on one side</td><td><code>shell(ob, t=…, open=&quot;top&quot;)</code></td></tr><tr><td>a bore, a bolt circle</td><td><code>hole(ob, d=…, on=…)</code></td></tr><tr><td>a bent tube</td><td><code>wire(name, path, d, fillet=…)</code></td></tr><tr><td>a section that changes along an axis</td><td><code>loft(name, station(z, w, d), …)</code></td></tr><tr><td>a long body from its views</td><td><code>body(name, plan, top, bottom)</code></td></tr><tr><td>a band along a path</td><td><code>stroke(path, t)</code></td></tr></table>
+<p><code>station</code> is the workhorse. It is a section at height <code>z</code>: width, depth, an offset <code>x</code>, <code>y</code>, and <code>n</code> from ellipse (2) to box (4). A few stations in a <code>loft</code> say a taper, a bulge or a drift.</p>
+<p><strong>Right</strong>: a nail, three stations and every value named.</p>
+<div class="fiche"><pre class="code"><span class="k">def</span> <span class="f">shaft</span>(length=<span class="n">97.6</span>, base_w=<span class="n">5.8</span>, tip_w=<span class="n">4.0</span>, base_h=<span class="n">6.5</span>, tip_h=<span class="n">2.6</span>, mid_w=<span class="n">4.7</span>, mid_h=<span class="n">4.4</span>, drift=-<span class="n">1.2</span>, rise=<span class="n">0.4</span>):
+    solid = s3d.<span class="vb">loft</span>(<span class="s">&quot;shaft&quot;</span>, s3d.<span class="vb">station</span>(z=<span class="n">0</span>, w=base_w, d=base_h, y=-base_h/<span class="n">2</span>, n=<span class="n">4</span>), s3d.<span class="vb">station</span>(z=length/<span class="n">2</span>, w=mid_w, d=mid_h, x=drift, y=-mid_h/<span class="n">2</span>, n=<span class="n">4</span>), s3d.<span class="vb">station</span>(z=length, w=tip_w, d=tip_h, y=-tip_h/<span class="n">2</span>-rise, n=<span class="n">4</span>))</pre></div>
+<p><strong>Right</strong>: a lamp shade, a revolve of four points.</p>
+<div class="fiche"><pre class="code"><span class="k">def</span> <span class="f">open_shade</span>(d=<span class="n">330.3</span>, top_d=<span class="n">320</span>, h=<span class="n">273</span>, bottom_wall=<span class="n">6</span>, top_wall=<span class="n">13</span>):
+    wall = s3d.<span class="vb">revolve</span>(<span class="s">&quot;shade_wall&quot;</span>, s3d.<span class="vb">poly</span>([(d/<span class="n">2</span>,<span class="n">0</span>),(top_d/<span class="n">2</span>,h),(top_d/<span class="n">2</span>-top_wall,h),(d/<span class="n">2</span>-bottom_wall,<span class="n">0</span>)]))</pre></div>
+<p><strong>Right</strong>: a tray in one verb.</p>
+<div class="fiche"><pre class="code">    tray = s3d.<span class="vb">shell</span>(s3d.<span class="vb">box</span>(<span class="s">&quot;tray&quot;</span>, w=w, d=d, h=h), t=t, open=<span class="s">&quot;top&quot;</span>)</pre></div>
+<p><strong>Wrong</strong>: a soup bowl.</p>
+<div class="fiche"><pre class="code"><span class="k">def</span> <span class="f">bowl_body</span>(r=<span class="n">60</span>, h=<span class="n">66.18</span>, t=<span class="n">1</span>):
+    profile = s3d.<span class="vb">poly</span>([(<span class="n">0</span>, <span class="n">0</span>), s3d.<span class="vb">spline</span>([(<span class="n">0</span>, <span class="n">0</span>), (<span class="n">21</span>, <span class="n">4</span>), (<span class="n">42</span>, <span class="n">19</span>), (<span class="n">56</span>, <span class="n">43</span>), (r, h)], tangents=((<span class="n">1</span>, <span class="n">0</span>), (<span class="n">0</span>, <span class="n">1</span>))), (r-t, h), s3d.<span class="vb">spline</span>([(r-t, h), (<span class="n">54</span>, <span class="n">41</span>), (<span class="n">41</span>, <span class="n">19</span>), (<span class="n">21</span>, <span class="n">5</span>), (<span class="n">0</span>, t)], tangents=((<span class="n">0</span>, -<span class="n">1</span>), (-<span class="n">1</span>, <span class="n">0</span>)))])</pre></div>
+<p>The inner wall is typed by hand, point by point, beside the outer one. <code>shell</code> says it in one word, and keeps the wall even.</p>
+<p><strong>How it should read</strong>: the outside only, then shell. Same shape (F 1.000 against the original).</p>
+<div class="fiche"><pre class="code"><span class="k">def</span> <span class="f">bowl_body</span>(r=<span class="n">60</span>, h=<span class="n">66.18</span>, t=<span class="n">1</span>):
+    profile = s3d.<span class="vb">poly</span>([(<span class="n">0</span>, <span class="n">0</span>), s3d.<span class="vb">spline</span>([(<span class="n">0</span>, <span class="n">0</span>), (<span class="n">21</span>, <span class="n">4</span>), (<span class="n">42</span>, <span class="n">19</span>), (<span class="n">56</span>, <span class="n">43</span>), (r, h)], tangents=((<span class="n">1</span>, <span class="n">0</span>), (<span class="n">0</span>, <span class="n">1</span>))), (<span class="n">0</span>, h)])
+    body = s3d.<span class="vb">shell</span>(s3d.<span class="vb">revolve</span>(<span class="s">&quot;curved_bowl&quot;</span>, profile), t=t, open=<span class="s">&quot;+Z&quot;</span>)</pre></div>
+<h2 id="7-dress-the-parts-when-appearance-matters">7. Dress the parts when appearance matters</h2>
+<p>When the target has colours and materials, every part gets <code>s3d.material(ob, kind, color=&quot;#rrggbb&quot;)</code>, once, before it is repeated. On shape-only data, such as CAD pieces, it is optional.</p>
+<ul><li>On a group, <code>material</code> reaches every part with no material of its own. The nearest call wins.</li><li><code>join</code> keeps the first object's material, <code>group</code> keeps each part's. Join only what is one colour.</li></ul>
+<p><strong>Right</strong>: dressed before the grid.</p>
+<div class="fiche"><pre class="code">    plank = s3d.<span class="vb">box</span>(<span class="s">&quot;top_plank&quot;</span>, w=w, d=plank_d, h=h)
+    s3d.<span class="vb">material</span>(plank, <span class="s">&quot;oak&quot;</span>, color=<span class="s">&quot;#5d4533&quot;</span>)
+    planks = s3d.<span class="vb">at</span>(plank, on=s3d.<span class="vb">grid</span>(nx=<span class="n">1</span>, ny=<span class="n">5</span>, py=pitch))</pre></div>
+<h2 id="8-one-frame-per-joint">8. One frame per joint</h2>
+<p>In the head, <code>f = s3d.local(parent, x, y, z)</code> gives the pivot. The same <code>f</code> goes to <code>s3d.at(child, on=f)</code> and to <code>s3d.joint(name, child, f, …)</code>.</p>
+<ul><li><strong>Every joint sits in the head</strong>, frame, part and joint side by side, so a part comes off with its own lines.</li><li><strong><code>local</code> reads the parent's own space</strong>, however deep the chain. No coordinate is composed into the world.</li><li><strong><code>axis</code> is a direction</strong> in the space the parent lives in: <code>&quot;+X&quot;</code>. A source's axis is turned by its <code>rpy</code> first.</li><li><strong>The sign of the axis decides which way it opens.</strong> A positive value turns by the right hand about the axis. Of 23 drafts where a small edit made the joints right, 8 changed that sign and nothing else.</li><li><strong>What does not move has no joint.</strong> Place it and put it in its parent's group before the joint is declared, or it stays behind when the parent moves.</li><li><strong>Build at rest.</strong> Every joint at 0, no <code>s3d.pose</code> in the program.</li></ul>
+<p><strong>Right</strong>: two slides and a hatch hinged on a sliding lid.</p>
+<div class="fiche"><pre class="code">    left_f = s3d.<span class="vb">local</span>(cabinet, -<span class="n">350</span>, <span class="n">0</span>, <span class="n">900</span>)
+    left = s3d.<span class="vb">at</span>(lid_left_part(), on=left_f)
+    s3d.<span class="vb">joint</span>(<span class="s">&quot;slide_left&quot;</span>, left, left_f, kind=<span class="s">&quot;prismatic&quot;</span>, axis=<span class="s">&quot;+X&quot;</span>, range=(<span class="n">0</span>, <span class="n">650</span>))
+    right_f = s3d.<span class="vb">local</span>(cabinet, <span class="n">350</span>, <span class="n">0</span>, <span class="n">920</span>)
+    right = s3d.<span class="vb">at</span>(lid_right_part(), on=right_f)
+    s3d.<span class="vb">joint</span>(<span class="s">&quot;slide_right&quot;</span>, right, right_f, kind=<span class="s">&quot;prismatic&quot;</span>, axis=<span class="s">&quot;-X&quot;</span>, range=(<span class="n">0</span>, <span class="n">650</span>))
+    hatch_f = s3d.<span class="vb">local</span>(right, <span class="n">0</span>, <span class="n">170</span>, <span class="n">18</span>)
+    hatch = s3d.<span class="vb">at</span>(service_hatch_part(), on=hatch_f)
+    s3d.<span class="vb">joint</span>(<span class="s">&quot;hatch_hinge&quot;</span>, hatch, hatch_f, kind=<span class="s">&quot;revolute&quot;</span>, axis=<span class="s">&quot;-X&quot;</span>, range=(<span class="n">0</span>, <span class="n">114.59</span>))</pre></div>
+<p><strong>Wrong</strong>: a rotary shaft, the part on one frame and the joint on another, 0 of 1 joints right.</p>
+<div class="fiche"><pre class="code">    f = s3d.<span class="vb">local</span>(body, <span class="n">1</span>, <span class="n">0</span>, <span class="n">5</span>)
+    spindle = s3d.<span class="vb">at</span>(spindle, on=s3d.<span class="vb">local</span>(body))
+    s3d.<span class="vb">joint</span>(<span class="s">&quot;body_to_spindle&quot;</span>, spindle, f, kind=<span class="s">&quot;continuous&quot;</span>, axis=<span class="s">&quot;+X&quot;</span>)</pre></div>
+<p><strong>Fixed by the model in its next draft</strong>: one frame for both, 1 of 1.</p>
+<div class="fiche"><pre class="code">    f = s3d.<span class="vb">local</span>(body, <span class="n">0</span>, <span class="n">0</span>, <span class="n">0</span>)
+    spindle = s3d.<span class="vb">at</span>(spindle, on=f)
+    s3d.<span class="vb">joint</span>(<span class="s">&quot;body_to_spindle&quot;</span>, spindle, f, kind=<span class="s">&quot;continuous&quot;</span>, axis=<span class="s">&quot;+X&quot;</span>)</pre></div>
+<p><strong>Wrong</strong>: a wall cabinet, the door swings into the cabinet, 0 of 1 joints right.</p>
+<div class="fiche"><pre class="code">    s3d.<span class="vb">joint</span>(<span class="s">&quot;door_hinge&quot;</span>, door, f, kind=<span class="s">&quot;revolute&quot;</span>, axis=<span class="s">&quot;+Z&quot;</span>, range=(<span class="n">0</span>, <span class="n">114.59</span>))</pre></div>
+<p><strong>Fixed by the model in its next draft</strong>: one sign changed, 1 of 1.</p>
+<div class="fiche"><pre class="code">    s3d.<span class="vb">joint</span>(<span class="s">&quot;door_hinge&quot;</span>, door, f, kind=<span class="s">&quot;revolute&quot;</span>, axis=<span class="s">&quot;-Z&quot;</span>, range=(<span class="n">0</span>, <span class="n">114.59</span>))</pre></div>
+<p class="counts">the source of this page: <a href="https://github.com/Sandflow-ai/sand3d/blob/main/docs/guidelines.md">docs/guidelines.md</a></p>
+
+<div class="fin"><span>sand3d 1.6.1 · Apache-2.0 · <a href="https://github.com/Sandflow-ai/sand3d">source</a></span>
+<img src="assets/sandflow-signature.svg" alt="Sandflow"></div>
+</div><script>
+document.querySelectorAll("[data-copy]").forEach(b => b.addEventListener("click", () => {
+  const text = document.getElementById(b.dataset.copy).textContent;
+  navigator.clipboard.writeText(text).then(() => { const t = b.textContent; b.textContent = "Copied";
+    setTimeout(() => b.textContent = t, 1400); });
+}));
+</script></body></html>
