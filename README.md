@@ -1,7 +1,7 @@
 <h1>
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/readme/sandflow-symbol-white.svg">
-    <img src="docs/readme/sandflow-symbol-black.svg" alt="Sandflow" height="26">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Sandflow-ai/sand3d/main/docs/readme/sandflow-symbol-white.svg">
+    <img src="https://raw.githubusercontent.com/Sandflow-ai/sand3d/main/docs/readme/sandflow-symbol-black.svg" alt="Sandflow" height="26">
   </picture>
   &nbsp;sand3d
 </h1>
@@ -13,7 +13,7 @@ edits, frames, joints and assemblies, over Blender's `bpy`. A program says *how*
 is made, part by part and in its own words, so a model writes it in a few hundred tokens
 and a person can read it.
 
-<p align="center"><img src="docs/readme/hero.png" alt="Objects written in sand3d" width="830"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/Sandflow-ai/sand3d/main/docs/readme/hero.png" alt="Objects written in sand3d" width="830"></p>
 
 <p align="center">
   <a href="https://sand3d.sandflow.ai/">Website</a> ·
@@ -24,7 +24,7 @@ and a person can read it.
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-793CFF"></a>
+  <a href="https://github.com/Sandflow-ai/sand3d/blob/main/LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-793CFF"></a>
   <img alt="Python 3.11 and 3.13" src="https://img.shields.io/badge/python-3.11%20%7C%203.13-121117">
   <img alt="bpy 4.5 and 5.2" src="https://img.shields.io/badge/bpy-4.5%20%7C%205.2-121117">
   <a href="https://github.com/Sandflow-ai/sand3d/actions/workflows/tests.yml"><img alt="tests" src="https://github.com/Sandflow-ai/sand3d/actions/workflows/tests.yml/badge.svg"></a>
@@ -32,7 +32,7 @@ and a person can read it.
 
 ## Why sand3d
 
-<p align="center"><img src="docs/readme/tokens.png" alt="Tokens per part, median: the same part takes 4.0 times sand3d's tokens in Blender Python, 2.3 in CadQuery, 6.0 in FeatureScript, 2.0 in the Articraft SDK" width="830"><br>
+<p align="center"><img src="https://raw.githubusercontent.com/Sandflow-ai/sand3d/main/docs/readme/tokens.png" alt="Tokens per part, median: the same part takes 4.0 times sand3d's tokens in Blender Python, 2.3 in CadQuery, 6.0 in FeatureScript, 2.0 in the Articraft SDK" width="830"><br>
 <a href="https://sand3d.sandflow.ai/tokens.html">How it is measured, part by part</a></p>
 
 - **Short.** A part takes 2 to 6× fewer tokens than the same part in Blender Python, CadQuery or FeatureScript ([details](https://sand3d.sandflow.ai/tokens.html)).
@@ -42,7 +42,7 @@ and a person can read it.
 
 ## A whole object, part by part
 
-<p align="center"><img src="docs/readme/washer.png" alt="A washing machine written in sand3d: its part tree, its four joints, and the three files it exports" width="830"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/Sandflow-ai/sand3d/main/docs/readme/washer.png" alt="A washing machine written in sand3d: its part tree, its four joints, and the three files it exports" width="830"></p>
 
 A front-loading washing machine in 38 lines of code ([play it and read it](https://sand3d.sandflow.ai/gallery.html)):
 the cabinet, the drum, the door with its glass and handle, the detergent drawer and the dial,
@@ -88,7 +88,7 @@ pip install sand3d        # or, in a uv project: uv add sand3d
 
 ## A first program
 
-<img src="docs/readme/bracket.png" alt="The bracket" width="300" align="right">
+<img src="https://raw.githubusercontent.com/Sandflow-ai/sand3d/main/docs/readme/bracket.png" alt="The bracket" width="300" align="right">
 
 ```python
 import sand3d as s3d
@@ -104,12 +104,12 @@ s3d.export(bracket(), "bracket.glb")
 
 Millimetres by default. Every verb with code that runs and its render: [the quickstart](https://sand3d.sandflow.ai/quickstart.html);
 objects to play joint by joint: [the gallery](https://sand3d.sandflow.ai/gallery.html); every signature: [the API](https://sand3d.sandflow.ai/api.html).
-The programs themselves: [docs/examples/](docs/examples/) and [programs/](programs/).
+The programs themselves: [docs/examples/](https://github.com/Sandflow-ai/sand3d/tree/main/docs/examples/) and [programs/](https://github.com/Sandflow-ai/sand3d/tree/main/programs/).
 
 ## Give it to your LLM
 
-Put [docs/api.md](docs/api.md) in the system prompt: the rules of the vocabulary, every
-signature, and worked examples, in about 3 600 tokens; [llms.txt](llms.txt) points a
+Put [docs/api.md](https://github.com/Sandflow-ai/sand3d/blob/main/docs/api.md) in the system prompt: the rules of the vocabulary, every
+signature, and worked examples, in about 3 600 tokens; [llms.txt](https://github.com/Sandflow-ai/sand3d/blob/main/llms.txt) points a
 model at it. For objects of several parts, [the guidelines](https://sand3d.sandflow.ai/guidelines.html) give
 the eight rules of an assembly program: the plan first, then the details, then the parts.
 
@@ -139,12 +139,12 @@ shows it as "Cite this repository".
   author = {Neveu, Thibault and Loy, Andr{\'e}a},
   title  = {sand3d},
   year   = {2026},
-  note   = {Version 1.6.1},
+  note   = {Version 1.6.2},
   url    = {https://github.com/Sandflow-ai/sand3d}
 }
 ```
 
 ## Contributing and license
 
-How the library is built, tested and versioned: [CONTRIBUTING.md](CONTRIBUTING.md).
-Apache License 2.0: see [LICENSE](LICENSE).
+How the library is built, tested and versioned: [CONTRIBUTING.md](https://github.com/Sandflow-ai/sand3d/blob/main/CONTRIBUTING.md).
+Apache License 2.0: see [LICENSE](https://github.com/Sandflow-ai/sand3d/blob/main/LICENSE).

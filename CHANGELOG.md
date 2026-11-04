@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.2 (2026-11-04)
+
+### Fixes
+
+* The README's images show on PyPI
+
 ## 1.6.1 (2026-11-04)
 
 First public release of sand3d: profiles, solids, edits, frames, joints and an
