@@ -14,8 +14,8 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 
 [project.urls]
-Homepage = "https://sandflow-ai.github.io/sand3d/"
-Documentation = "https://sandflow-ai.github.io/sand3d/api.html"
+Homepage = "https://sand3d.sandflow.ai/"
+Documentation = "https://sand3d.sandflow.ai/api.html"
 Repository = "https://github.com/Sandflow-ai/sand3d"
 Issues = "https://github.com/Sandflow-ai/sand3d/issues"
 

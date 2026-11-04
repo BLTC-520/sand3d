@@ -16,11 +16,11 @@ and a person can read it.
 <p align="center"><img src="docs/readme/hero.png" alt="Objects written in sand3d" width="830"></p>
 
 <p align="center">
-  <a href="https://sandflow-ai.github.io/sand3d/">Website</a> ·
-  <a href="https://sandflow-ai.github.io/sand3d/api.html">API for LLMs</a> ·
-  <a href="https://sandflow-ai.github.io/sand3d/guidelines.html">Writing an assembly</a> ·
-  <a href="https://sandflow-ai.github.io/sand3d/#export">Export</a> ·
-  <a href="https://sandflow-ai.github.io/sand3d/#citation">Citation</a>
+  <a href="https://sand3d.sandflow.ai/">Website</a> ·
+  <a href="https://sand3d.sandflow.ai/api.html">API for LLMs</a> ·
+  <a href="https://sand3d.sandflow.ai/guidelines.html">Writing an assembly</a> ·
+  <a href="https://sand3d.sandflow.ai/#export">Export</a> ·
+  <a href="https://sand3d.sandflow.ai/#citation">Citation</a>
 </p>
 
 <p align="center">
@@ -33,10 +33,10 @@ and a person can read it.
 ## Why sand3d
 
 <p align="center"><img src="docs/readme/tokens.png" alt="Tokens per part, median: the same part takes 4.0 times sand3d's tokens in Blender Python, 2.3 in CadQuery, 6.0 in FeatureScript, 2.0 in the Articraft SDK" width="830"><br>
-<a href="https://sandflow-ai.github.io/sand3d/tokens.html">How it is measured, part by part</a></p>
+<a href="https://sand3d.sandflow.ai/tokens.html">How it is measured, part by part</a></p>
 
-- **Short.** A part takes 2 to 6× fewer tokens than the same part in Blender Python, CadQuery or FeatureScript ([details](https://sandflow-ai.github.io/sand3d/tokens.html)).
-- **The whole API fits in a prompt**, about 3,600 tokens ([the API](https://sandflow-ai.github.io/sand3d/api.html)).
+- **Short.** A part takes 2 to 6× fewer tokens than the same part in Blender Python, CadQuery or FeatureScript ([details](https://sand3d.sandflow.ai/tokens.html)).
+- **The whole API fits in a prompt**, about 3,600 tokens ([the API](https://sand3d.sandflow.ai/api.html)).
 - **Named, not computed.** Parts, edges and faces are reached by name, never by hand-computed coordinates.
 - **Deterministic.** The same program builds the same mesh, bit for bit.
 
@@ -44,7 +44,7 @@ and a person can read it.
 
 <p align="center"><img src="docs/readme/washer.png" alt="A washing machine written in sand3d: its part tree, its four joints, and the three files it exports" width="830"></p>
 
-A front-loading washing machine in 38 lines of code ([play it and read it](https://sandflow-ai.github.io/sand3d/gallery.html)):
+A front-loading washing machine in 38 lines of code ([play it and read it](https://sand3d.sandflow.ai/gallery.html)):
 the cabinet, the drum, the door with its glass and handle, the detergent drawer and the dial,
 each a named part, and four joints that say how they move.
 
@@ -102,15 +102,15 @@ def bracket(w=80, d=40, t=6, hole_d=6.6, pitch=50):
 s3d.export(bracket(), "bracket.glb")
 ```
 
-Millimetres by default. Every verb with code that runs and its render: [the quickstart](https://sandflow-ai.github.io/sand3d/quickstart.html);
-objects to play joint by joint: [the gallery](https://sandflow-ai.github.io/sand3d/gallery.html); every signature: [the API](https://sandflow-ai.github.io/sand3d/api.html).
+Millimetres by default. Every verb with code that runs and its render: [the quickstart](https://sand3d.sandflow.ai/quickstart.html);
+objects to play joint by joint: [the gallery](https://sand3d.sandflow.ai/gallery.html); every signature: [the API](https://sand3d.sandflow.ai/api.html).
 The programs themselves: [docs/examples/](docs/examples/) and [programs/](programs/).
 
 ## Give it to your LLM
 
 Put [docs/api.md](docs/api.md) in the system prompt: the rules of the vocabulary, every
 signature, and worked examples, in about 3 600 tokens; [llms.txt](llms.txt) points a
-model at it. For objects of several parts, [the guidelines](https://sandflow-ai.github.io/sand3d/guidelines.html) give
+model at it. For objects of several parts, [the guidelines](https://sand3d.sandflow.ai/guidelines.html) give
 the eight rules of an assembly program: the plan first, then the details, then the parts.
 
 ## What is in it
