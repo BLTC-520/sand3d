@@ -16,7 +16,8 @@ and a person can read it.
 <p align="center"><img src="https://raw.githubusercontent.com/Sandflow-ai/sand3d/main/docs/readme/hero.png" alt="Objects written in sand3d" width="830"></p>
 
 <p align="center">
-  <a href="https://sand3d.sandflow.ai/">Website</a> ·
+  <a href="https://sandflow.ai/sand3d/">Website</a> ·
+  <a href="https://sand3d.sandflow.ai/">Docs</a> ·
   <a href="https://sand3d.sandflow.ai/api.html">API for LLMs</a> ·
   <a href="https://sand3d.sandflow.ai/guidelines.html">Writing an assembly</a> ·
   <a href="https://sand3d.sandflow.ai/#export">Export</a> ·
