@@ -4,7 +4,7 @@ dynamic = ["version"]
 description = "3D modeling in Python, built for LLMs: short programs over Blender's bpy."
 readme = "README.md"
 # bpy ships one CPython per release line: 4.5 LTS for 3.11, 5.2 LTS for 3.13 (none for 3.12).
-# The two lines the suite runs, each on its Python; 5.0 and 5.1 are left out: untested.
+# The two lines supported, each on its Python (CI runs bpy 5.2); 5.0 and 5.1 are left out.
 requires-python = ">=3.11,!=3.12.*,<3.14"
 dependencies = [
     "bpy>=4.5,<4.6; python_version == '3.11'",
