@@ -148,9 +148,10 @@ ul.lines { margin: 14px 0 0; font-size: 14.5px }
 .joints em { font-style: normal; color: var(--gris); min-width: 44px }
 @media (max-width: 1100px) { .agal { grid-template-columns: 1fr } .agal .gallery { grid-template-columns: repeat(4, 1fr); max-height: none } }
 
-.nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 0 56px }
+.nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin: 0 0 56px }
 .nav .marque { margin: 0 }
-.nav nav { display: flex; gap: 20px; font-size: 14px }
+.nav nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px 20px; font-size: 14px }
+.nav nav img.hf { height: 14px; width: auto; vertical-align: -2px; margin-right: 5px }
 .nav nav a { color: var(--encre); text-decoration: none }
 .nav nav a:hover, .nav nav a.on { color: var(--violet) }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 40px }

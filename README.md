@@ -18,10 +18,8 @@ and a person can read it.
 <p align="center">
   <a href="https://sandflow.ai/sand3d/">Website</a> ·
   <a href="https://sand3d.sandflow.ai/">Docs</a> ·
-  <a href="https://sand3d.sandflow.ai/api.html">API for LLMs</a> ·
-  <a href="https://sand3d.sandflow.ai/guidelines.html">Writing an assembly</a> ·
-  <a href="https://sand3d.sandflow.ai/#export">Export</a> ·
-  <a href="https://sand3d.sandflow.ai/#citation">Citation</a>
+  <a href="https://huggingface.co/collections/Sandflow/sand3d-6aec268fbdcd3bc174236168"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Sandflow-ai/sand3d/main/docs/readme/hf-logo-monochrome-white.svg"><img src="https://raw.githubusercontent.com/Sandflow-ai/sand3d/main/docs/readme/hf-logo-monochrome.svg" alt="" height="14"></picture>&nbsp;Datasets</a> ·
+  <a href="https://huggingface.co/spaces/Sandflow/sand3d-explorer">Explorer</a>
 </p>
 
 <p align="center">

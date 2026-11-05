@@ -18,6 +18,8 @@ Homepage = "https://sandflow.ai/sand3d/"
 Documentation = "https://sand3d.sandflow.ai/"
 Repository = "https://github.com/Sandflow-ai/sand3d"
 Issues = "https://github.com/Sandflow-ai/sand3d/issues"
+Datasets = "https://huggingface.co/collections/Sandflow/sand3d-6aec268fbdcd3bc174236168"
+Explorer = "https://huggingface.co/spaces/Sandflow/sand3d-explorer"
 
 [build-system]
 requires = ["setuptools>=77"]
