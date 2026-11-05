@@ -15,7 +15,6 @@ authors:
     affiliation: "Sandflow"
   - given-names: "Andréa"
     family-names: "Loy"
-    email: "andrea.loy@sandflow.ai"
     affiliation: "Sandflow"
 license: Apache-2.0
 version: 1.6.2

@@ -79,7 +79,7 @@ s3d.export(machine, "washer.glb")    # or .urdf, .usda, .obj, .stl
 ## Install
 
 Python 3.13 (recommended) or 3.11. Blender comes with it, as the `bpy` module: 5.2 LTS on
-Python 3.13, 4.5 LTS on Python 3.11, the two versions the tests run on.
+Python 3.13, 4.5 LTS on Python 3.11; CI runs bpy 5.2.
 
 ```bash
 pip install sand3d        # or, in a uv project: uv add sand3d
