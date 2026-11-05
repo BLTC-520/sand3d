@@ -16,10 +16,10 @@ and a person can read it.
 <p align="center"><img src="https://raw.githubusercontent.com/Sandflow-ai/sand3d/main/docs/readme/hero.png" alt="Objects written in sand3d" width="830"></p>
 
 <p align="center">
-  <a href="https://sandflow.ai/sand3d/">Website</a> ·
-  <a href="https://sand3d.sandflow.ai/">Docs</a> ·
-  <a href="https://huggingface.co/collections/Sandflow/sand3d-6aec268fbdcd3bc174236168"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Sandflow-ai/sand3d/main/docs/readme/hf-logo-monochrome-white.svg"><img src="https://raw.githubusercontent.com/Sandflow-ai/sand3d/main/docs/readme/hf-logo-monochrome.svg" alt="" height="14"></picture>&nbsp;Datasets</a> ·
-  <a href="https://huggingface.co/spaces/Sandflow/sand3d-explorer">Explorer</a>
+  <a href="https://sandflow.ai/sand3d/"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Sandflow-ai/sand3d/main/docs/readme/sandflow-symbol-white.svg"><img src="https://raw.githubusercontent.com/Sandflow-ai/sand3d/main/docs/readme/sandflow-symbol-black.svg" alt="" height="16" align="absmiddle"></picture>&nbsp;Website</a> ·
+  <a href="https://sand3d.sandflow.ai/"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Sandflow-ai/sand3d/main/docs/readme/lucide-book-open-white.svg"><img src="https://raw.githubusercontent.com/Sandflow-ai/sand3d/main/docs/readme/lucide-book-open.svg" alt="" height="16" align="absmiddle"></picture>&nbsp;Docs</a> ·
+  <a href="https://huggingface.co/collections/Sandflow/sand3d-6aec268fbdcd3bc174236168"><img src="https://raw.githubusercontent.com/Sandflow-ai/sand3d/main/docs/readme/hf-logo.svg" alt="" height="16" align="absmiddle">&nbsp;Datasets</a> ·
+  <a href="https://huggingface.co/spaces/Sandflow/sand3d-explorer"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Sandflow-ai/sand3d/main/docs/readme/lucide-box-white.svg"><img src="https://raw.githubusercontent.com/Sandflow-ai/sand3d/main/docs/readme/lucide-box.svg" alt="" height="16" align="absmiddle"></picture>&nbsp;Explorer</a>
 </p>
 
 <p align="center">
