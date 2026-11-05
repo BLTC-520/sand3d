@@ -173,7 +173,9 @@ ul.lines { margin: 14px 0 0; font-size: 14.5px }
          border-radius: 999px; padding: 4px 12px; cursor: pointer; color: var(--encre) }
 .copie:hover { border-color: var(--violet); color: var(--violet) }
 ol.rules li { font-size: 15px }
-.datasets { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 16px 0 10px }
+.datasets { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; margin: 16px 0 10px }
+.datasets .ds { grid-column: span 2 }
+.datasets .ds:nth-child(n+4) { grid-column: span 3 }
 .ds { display: block; background: var(--blanc); border: 1px solid var(--filet); border-radius: var(--radius);
       overflow: hidden; text-decoration: none; color: var(--encre) }
 .ds:hover { border-color: var(--violet) }
@@ -181,7 +183,7 @@ ol.rules li { font-size: 15px }
 .ds span { display: block; font-size: 14.5px; padding: 12px 14px 2px }
 .ds strong { font-weight: 500; font-family: var(--mono); font-size: 13.5px }
 .ds em { display: block; font-style: normal; font-size: 13px; color: var(--gris); padding: 0 14px 13px }
-@media (max-width: 660px) { .datasets { grid-template-columns: 1fr } .cote { grid-template-columns: 1fr } }
+@media (max-width: 660px) { .datasets { grid-template-columns: 1fr } .datasets .ds, .datasets .ds:nth-child(n+4) { grid-column: auto } .cote { grid-template-columns: 1fr } }
 /* narrow screens: a wide table scrolls in its frame; a grid column never grows past the page */
 .tablo { overflow-x: auto; margin: 18px 0 24px }
 .tablo table { margin: 0 }
