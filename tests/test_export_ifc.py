@@ -2,18 +2,30 @@
 
 The file is read back with a parser of its own, here: IFC is a STEP physical file, and
 the suite takes nothing beyond bpy. What is checked is what a reader needs — the spatial
-structure above the parts, a proxy per mesh and an assembly per group, the breps in
-metres and Z up still facing out, the look on each one, and the ids unique and well
-formed — and that `.rvt`, which only Revit writes, names this format instead.
+structure above the parts, a proxy per mesh and an assembly per group, the triangulated
+face sets in metres and Z up still facing out, the look on each one in sRGB, and the ids
+unique and well formed — and that `.rvt`, which only Revit writes, names this format
+instead. Where IfcOpenShell is found (`ifc_read.py`, under the Python that
+$SAND3D_IFC_PYTHON names, never bpy's), the files are also held to its schema and
+where-rule validation, and their solids built by its geometry kernel.
 """
+import json
+import os
+import subprocess
 import re
 import tempfile
 import unittest
 from pathlib import Path
 
+import bpy
+
 import sand3d as s3d
 from sand3d import _core
 from sand3d.ifcfile import _B64
+
+HERE = Path(__file__).resolve().parent
+#: A Python with IfcOpenShell: $SAND3D_IFC_PYTHON, which must then work, or .cache/venv-ifc's.
+IFC_PYTHON = os.environ.get("SAND3D_IFC_PYTHON") or str(HERE.parent / ".cache/venv-ifc/bin/python")
 
 ENTITY = re.compile(r"^#(\d+)=([A-Z0-9]+)\((.*)\);$", re.M)
 
@@ -93,26 +105,24 @@ class Ifc:
                 if args and args[0].startswith("'") and len(unquote(args[0])) == 22
                 and kind.startswith(("IFCREL", "IFCPROJECT", "IFCSITE", "IFCBUILDING", "IFCELEMENT"))]
 
-    def shell(self, ref):
-        """The points and the triangles of a product's faceted brep."""
+    def faceset(self, ref):
+        """A product's `IfcTriangulatedFaceSet`: its arguments."""
         shape = self.by_ref[ref][1][6]
         rep = split(self.by_ref[shape][1][2][1:-1])[0]
         kind, args = self.by_ref[rep]
         assert kind == "IFCSHAPEREPRESENTATION", kind
-        assert unquote(args[1]) == "Body" and unquote(args[2]) == "Brep", args[1:3]
-        brep = split(args[3][1:-1])[0]
-        closed = self.by_ref[brep][1][0]
-        assert self.by_ref[closed][0] == "IFCCLOSEDSHELL"
-        tris = []
-        for face in split(self.by_ref[closed][1][0][1:-1]):
-            bound = split(self.by_ref[face][1][0][1:-1])[0]
-            bkind, bargs = self.by_ref[bound]
-            assert bkind == "IFCFACEOUTERBOUND" and bargs[1] == ".T."
-            loop = self.by_ref[bargs[0]]
-            assert loop[0] == "IFCPOLYLOOP"
-            tris.append([tuple(float(c) for c in split(self.by_ref[p][1][0][1:-1]))
-                         for p in split(loop[1][0][1:-1])])
-        return tris
+        assert unquote(args[1]) == "Body" and unquote(args[2]) == "Tessellation", args[1:3]
+        kind, faces = self.by_ref[split(args[3][1:-1])[0]]
+        assert kind == "IFCTRIANGULATEDFACESET", kind
+        return faces
+
+    def shell(self, ref):
+        """The triangles of a product's face set, each as its three points."""
+        faces = self.faceset(ref)
+        kind, (coords,) = self.by_ref[faces[0]]
+        assert kind == "IFCCARTESIANPOINTLIST3D", kind
+        points = [tuple(float(c) for c in split(p[1:-1])) for p in split(coords[1:-1])]
+        return [[points[int(i) - 1] for i in split(t[1:-1])] for t in split(faces[3][1:-1])]
 
     def parts(self):
         """name -> its triangles, for every proxy in the file."""
@@ -141,6 +151,17 @@ class Ifc:
         got = self.kind(kind)
         assert len(got) == 1, f"{len(got)} {kind}"
         return got[0][0]
+
+
+def read_back(path):
+    """What IfcOpenShell makes of a file: its validation errors and its solids' volumes."""
+    if not os.environ.get("SAND3D_IFC_PYTHON") and not Path(IFC_PYTHON).exists():
+        raise unittest.SkipTest("no Python with IfcOpenShell: set SAND3D_IFC_PYTHON")
+    done = subprocess.run([IFC_PYTHON, str(HERE / "ifc_read.py"), str(path)], capture_output=True, text=True,
+                          timeout=300)
+    if done.returncode:
+        raise AssertionError(f"ifc_read.py failed:\n{done.stderr[-3000:]}")
+    return json.loads(done.stdout)
 
 
 def volume(tris):
@@ -223,7 +244,7 @@ class ExportIfc(unittest.TestCase):
         self.assertEqual(ifc.under(by_name["outer"]), ["c", "inner"])
         self.assertEqual(ifc.under(by_name["inner"]), ["a", "b"])
 
-    def test_the_breps_are_the_meshes_at_the_pose_in_metres_z_up_facing_out(self):
+    def test_the_face_sets_are_the_meshes_at_the_pose_in_metres_z_up_facing_out(self):
         root, cab, door, twin = machine()
         s3d.pose(door, 70)
         ifc = self.write(root)
@@ -245,8 +266,29 @@ class ExportIfc(unittest.TestCase):
         s3d.empty_scene()
         box = s3d.box("b", 10, 10, 10)
         ifc = self.write(box, "box.ifc")
-        self.assertEqual(len(ifc.kind("IFCCARTESIANPOINT")), len(box.data.vertices) + 1)   # + the origin
-        self.assertEqual(len(ifc.kind("IFCFACE")), triangles(box))
+        faces = ifc.faceset(ifc.only("IFCBUILDINGELEMENTPROXY"))
+        self.assertEqual(len(split(ifc.by_ref[faces[0]][1][0][1:-1])), len(box.data.vertices))
+        self.assertEqual(len(split(faces[3][1:-1])), triangles(box))
+        self.assertEqual(faces[2], ".T.")                                          # a solid closes
+        self.assertEqual(ifc.kind("IFCFACETEDBREP"), [])
+
+    def test_an_open_mesh_is_not_called_closed(self):
+        s3d.empty_scene()
+        me = bpy.data.meshes.new("sheet")
+        me.from_pydata([(0, 0, 0), (10, 0, 0), (10, 10, 0), (0, 10, 0)], [], [(0, 1, 2, 3)])
+        sheet = _core.link(bpy.data.objects.new("sheet", me))
+        ifc = self.write(s3d.group("thing", s3d.box("b", 5, 5, 5), sheet), "open.ifc")
+        closed = {ifc.name(ref): ifc.faceset(ref)[2] for ref, _ in ifc.kind("IFCBUILDINGELEMENTPROXY")}
+        self.assertEqual(closed, {"b": ".T.", "sheet": ".F."})
+
+    def test_a_mesh_with_no_triangle_is_left_out(self):
+        """An empty face set is no valid geometry: the part goes, as an empty group does."""
+        s3d.empty_scene()
+        hollow = _core.link(bpy.data.objects.new("hollow", bpy.data.meshes.new("hollow")))
+        ifc = self.write(s3d.group("thing", s3d.box("b", 5, 5, 5), hollow), "hollow.ifc")
+        self.assertEqual(sorted(ifc.parts()), ["b"])
+        self.assertEqual(ifc.under(ifc.only("IFCELEMENTASSEMBLY")), ["b"])
+        self.assertEqual(len(ifc.kind("IFCTRIANGULATEDFACESET")), 1)
 
     def test_the_unit_becomes_metres(self):
         s3d.empty_scene()
@@ -285,6 +327,14 @@ class ExportIfc(unittest.TestCase):
         worn = {ifc.name(k) for _, args in ifc.kind("IFCRELASSOCIATESMATERIAL") for k in ifc.refs(args, 4)}
         self.assertEqual(worn, {"cab", "door", "door_2"})
 
+    def test_the_colour_is_srgb_as_revit_reads_it(self):
+        """The hex over 255, as the URDF writes it: Blender's linear values would read darker."""
+        root, cab, *_ = machine()
+        s3d.material(cab, "plastic", color="#3fae6a")
+        ifc = self.write(root)
+        (_, colour), = ifc.kind("IFCCOLOURRGB")
+        self.assertEqual([round(float(c) * 255) for c in colour[1:]], [0x3F, 0xAE, 0x6A])
+
     def test_a_part_with_no_look_carries_no_style(self):
         root, cab, *_ = machine()
         s3d.material(cab, "oak")
@@ -311,6 +361,23 @@ class ExportIfc(unittest.TestCase):
             self.assertTrue(all(c in _B64 for c in g), g)
             self.assertLess(_B64.index(g[0]), 4, "the first character of an id holds two bits")
 
+    def test_the_owner_history_states_no_change_without_a_date(self):
+        """`.ADDED.` would need a LastModifiedDate (CorrectChangeAction), which is a clock."""
+        root, *_ = machine()
+        ifc = self.write(root)
+        (_, owner), = ifc.kind("IFCOWNERHISTORY")
+        self.assertEqual(owner[3:5], ["$", "$"])
+
+    def test_parts_that_share_a_name_do_not_share_an_id(self):
+        """Ids digest the geometry beside the name: two models, each a part named chair and
+        a root named room, share no id — nor do the assemblies and the project above them."""
+        got = []
+        for size in (10, 20):
+            s3d.empty_scene()
+            ifc = self.write(s3d.group("room", s3d.box("chair", size, size, size)), f"room_{size}.ifc")
+            got.append(set(ifc.guids()))
+        self.assertEqual(got[0] & got[1], set())
+
     def test_the_same_program_writes_the_same_file(self):
         """Nothing of the moment goes in: the same program, built again, writes the bytes
         again — what a dataset of programs and their exports needs."""
@@ -329,6 +396,22 @@ class ExportIfc(unittest.TestCase):
         self.assertIn("\\X2\\", ifc.text)                       # escaped, not written raw
         self.assertEqual(sorted(ifc.parts()), ["rød-1"])
         self.assertEqual(ifc.name(ifc.kind("IFCPROJECT")[0][0]), "bøx'ü")
+
+    def test_ifcopenshell_validates_the_file_and_builds_its_solids(self):
+        root, cab, door, twin = machine()
+        s3d.material(cab, "brushed_steel")
+        s3d.material(door, "glass")
+        s3d.pose(door, 70)
+        hollow = _core.link(bpy.data.objects.new("hollow", bpy.data.meshes.new("hollow")))
+        hollow.parent = root
+        self.write(root)
+        got = read_back(self.tmp / "washer.ifc")
+        self.assertEqual(got["errors"], [])
+        self.assertEqual(got["schema"], "IFC4")
+        self.assertEqual(sorted(got["solids"]), ["cab", "door", "door_2"])
+        for name, volume_m3 in got["solids"].items():
+            self.assertGreater(volume_m3, 0, name)
+        self.assertAlmostEqual(got["solids"]["cab"], 0.6 * 0.6 * 0.85, places=6)
 
     def test_revit_formats_name_ifc_instead(self):
         root, *_ = machine()

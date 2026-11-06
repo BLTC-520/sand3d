@@ -67,7 +67,7 @@ to turn in 3D and play joint by joint: <a href="gallery.html">the gallery</a>.</
 <tr><td><strong>GLB</strong></td><td>meshes, materials, the joints in each node's extras, at the current pose</td><td>the web, viewers, game engines</td></tr>
 <tr><td><strong>URDF</strong></td><td>a link per moving part, its joints and their limits, at rest; OBJ meshes beside it</td><td>ROS, PyBullet, MuJoCo, Isaac</td></tr>
 <tr><td><strong>USDA</strong></td><td>the same tree in OpenUSD (UsdGeom, UsdPhysics), with the materials</td><td>Omniverse, Isaac Sim, USD pipelines</td></tr>
-<tr><td><strong>IFC</strong></td><td>the part tree as an IFC4 project — assemblies, a proxy per part, faceted breps, the materials</td><td>Revit, ArchiCAD, Tekla, BIM</td></tr>
+<tr><td><strong>IFC</strong></td><td>the part tree as an IFC4 project — assemblies, a proxy per part, triangulated face sets, the materials</td><td>Revit, ArchiCAD, Tekla, BIM</td></tr>
 <tr><td><strong>OBJ</strong>, <strong>STL</strong></td><td>the meshes alone, at the current pose: OBJ Y up, binary STL Z up</td><td>any 3D tool, slicers</td></tr></table></div>
 <p><code>.usd</code>, <code>.usdc</code> and <code>.usdz</code> come from the <code>.usda</code> through USD's own tools. Revit's own <code>.rvt</code> is written by Revit alone, so <code>export</code> names <code>.ifc</code> for it.</p>
 

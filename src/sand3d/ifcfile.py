@@ -12,16 +12,20 @@ an `IfcBuildingElementProxy`, the generic product a reader shows as a solid of i
 Groups nest through `IfcRelAggregates`; only the root sits in the storey, through
 `IfcRelContainedInSpatialStructure`, as IFC wants an aggregated part placed once.
 
-The geometry: an `IfcFacetedBrep` per mesh, in a `Body` shape representation — Blender's
-triangles in one `IfcClosedShell`, each an `IfcFace` over an `IfcPolyLoop`, the points
-shared inside the mesh (a reader that fans a concave face itself gets it wrong, so the
-faces are the triangles). World coordinates, at the current pose, in metres, Z up. Every
-placement is the identity and the pose is baked into the points: a mirror image has no
-`IfcAxis2Placement3D` — IFC frames are right-handed — and the OBJ and the STL bake it
-the same way.
+The geometry: an `IfcTriangulatedFaceSet` per mesh, in a `Body` shape representation of
+type `Tessellation` — Blender's triangles as indices into one `IfcCartesianPointList3D`,
+the points shared inside the mesh (a reader that fans a concave face itself gets it wrong,
+so the faces are the triangles), `Closed` where every edge has two triangles. It is IFC4's
+mesh, about an eighth the size of the same triangles as an `IfcFacetedBrep`, whose every
+point, face and loop is an entity of its own. A mesh with no triangle is no geometry: it is
+left out, as a group with nothing under it is. World coordinates, at the current pose, in
+metres, Z up. Every placement is the identity and the pose is baked into the points: a
+mirror image has no `IfcAxis2Placement3D` — IFC frames are right-handed — and the OBJ and
+the STL bake it the same way.
 
 What `material` set: an `IfcMaterial` named after the preset, associated with the parts
-wearing it, and an `IfcSurfaceStyle` on the brep carrying the colour, the transparency
+wearing it, and an `IfcSurfaceStyle` on the face set carrying the colour — the hex over
+255, sRGB, as Revit and the URDF read it, not Blender's linear values — the transparency
 and a reflectance method read off the look — `.METAL.` for a metal, `.GLASS.` for
 something transmissive. One of each per distinct look, in the order met.
 
@@ -31,9 +35,11 @@ as the GLB and the USDA do would put plain `glass` at 1, and a reader draws noth
 all at 1 — while `opacity=0` still does mean invisible, as `material` says it does.
 
 No joint: IFC says no mechanism, so the file is the pose it was written at — the URDF
-and the USDA carry the joints. No timestamp either, and the ids are digests of the
-names rather than chance, so two runs of a program write the same bytes, as they do for
-every other format sand3d writes.
+and the USDA carry the joints. No timestamp either, and the ids are digests rather than
+chance — of a part's name and its geometry, of a group's name and its parts, of the
+model's for the project above them — so two runs of a program write the same bytes, as
+they do for every other format sand3d writes, and two parts or two models that only share
+a name still get ids of their own.
 """
 import hashlib
 import os
@@ -100,6 +106,26 @@ def _refs(items):
     return "(" + ",".join(items) + ")"
 
 
+def _srgb(hex_color):
+    """'#rrggbb' as the three numbers of an `IfcColourRGB`: sRGB, the hex over 255, as
+    Revit reads a colour and the URDF writes one."""
+    return [int(hex_color[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+
+
+def _closed(tris):
+    """Whether the triangles close: every edge between exactly two of them."""
+    edges = {}
+    for t in tris:
+        for a, b in ((t[0], t[1]), (t[1], t[2]), (t[2], t[0])):
+            key = (a, b) if a < b else (b, a)
+            edges[key] = edges.get(key, 0) + 1
+    return all(n == 2 for n in edges.values())
+
+
+def _digest(*parts):
+    return hashlib.sha256("\n".join(parts).encode()).hexdigest()
+
+
 class _Step:
     """The DATA section: an entity to a line, numbered as it is written."""
 
@@ -122,7 +148,9 @@ def write_ifc(root, path):
     who = step("IFCPERSONANDORGANIZATION", step("IFCPERSON", "$", "$", _text("sand3d"),
                                                 "$", "$", "$", "$", "$"), org, "$")
     app = step("IFCAPPLICATION", org, _text(__version__), _text("sand3d"), _text("sand3d"))
-    owner = step("IFCOWNERHISTORY", who, app, "$", ".ADDED.", "$", "$", "$", "0")
+    # No ChangeAction: .ADDED. (or .MODIFIED., .DELETED.) asks for a LastModifiedDate,
+    # which is a clock (IfcOwnerHistory's CorrectChangeAction rule).
+    owner = step("IFCOWNERHISTORY", who, app, "$", "$", "$", "$", "$", "0")
 
     units = step("IFCUNITASSIGNMENT", _refs([
         step("IFCSIUNIT", "*", ".LENGTHUNIT.", "$", ".METRE."),
@@ -143,22 +171,13 @@ def write_ifc(root, path):
     at_building = placed(at_site)
     at_storey = placed(at_building)
 
-    def spatial(kind, name, at, *tail):
-        return step(kind, _guid(f"{kind}:{title}"), owner, _text(name), "$", "$", at, "$", "$", ".ELEMENT.", *tail)
-
-    site = spatial("IFCSITE", "Site", at_site, "$", "$", "$", "$", "$")
-    building = spatial("IFCBUILDING", "Building", at_building, "$", "$", "$")
-    storey = spatial("IFCBUILDINGSTOREY", "Storey", at_storey, "0.")
-    project = step("IFCPROJECT", _guid(f"project:{title}"), owner, _text(title), "$", "$", "$", "$",
-                   _refs([model]), units)
-
-    looks, wearers, under = {}, {}, {}
+    looks, wearers, under, ids = {}, {}, {}, {}
 
     def style(tag):
         """The `IfcSurfaceStyle` of a look, and its `IfcMaterial`: one of each per look."""
         if tag not in looks:
             v = materials.look(tag)
-            rgb = materials._linear(v["color"])[:3]
+            rgb = _srgb(v["color"])
             colour = step("IFCCOLOURRGB", "$", *(_real(c) for c in rgb))
             clear = max(1 - v["opacity"], 0.85 * v["transmission"])
             method = next((m for key, m in _METHOD if v[key]), ".NOTDEFINED.")
@@ -169,24 +188,36 @@ def write_ifc(root, path):
                           step("IFCMATERIAL", _text(name), "$", "$"))
         return looks[tag]
 
-    def product(ob, kind, *tail):
-        """`ob` as an IFC product of `kind`: its brep where it is a mesh, its look on both
-        the geometry (a style) and the product (a material), and its reference."""
+    def mesh(ob):
+        """`ob`'s triangles as text, or None where it has none: an empty
+        `IfcTriangulatedFaceSet` is no valid geometry."""
+        if ob.type != "MESH":
+            return None
+        verts, tris = _triangles(ob, y_up=False)
+        if not tris:
+            return None
+        return ("(" + ",".join("(" + ",".join(_real(c) for c in v) + ")" for v in verts) + ")",
+                "(" + ",".join("(" + ",".join(str(i + 1) for i in t) + ")" for t in tris) + ")",
+                _closed(tris))
+
+    def product(ob, kind, key, geometry, *tail):
+        """`ob` as an IFC product of `kind`: its face set where it has `geometry`, its look
+        on both the geometry (a style) and the product (a material), and its reference.
+        `key` is what its id digests, besides its name."""
         name = names.unique("element", _core.given_name(ob))
         tag = materials._nearest(ob)
         shape = "$"
-        if ob.type == "MESH":
-            verts, tris = _triangles(ob, y_up=False)
-            points = [step("IFCCARTESIANPOINT", "(" + ",".join(_real(c) for c in v) + ")") for v in verts]
-            faces = [step("IFCFACE", _refs([step("IFCFACEOUTERBOUND",
-                                                 step("IFCPOLYLOOP", _refs([points[i] for i in t])), ".T.")]))
-                     for t in tris]
-            brep = step("IFCFACETEDBREP", step("IFCCLOSEDSHELL", _refs(faces)))
+        if geometry is not None:
+            coords, indices, closed = geometry
+            faces = step("IFCTRIANGULATEDFACESET", step("IFCCARTESIANPOINTLIST3D", coords), "$",
+                         ".T." if closed else ".F.", indices, "$")
             shape = step("IFCPRODUCTDEFINITIONSHAPE", "$", "$", _refs([
-                step("IFCSHAPEREPRESENTATION", body, _text("Body"), _text("Brep"), _refs([brep]))]))
+                step("IFCSHAPEREPRESENTATION", body, _text("Body"), _text("Tessellation"), _refs([faces]))]))
             if tag is not None:
-                step("IFCSTYLEDITEM", brep, _refs([style(tag)[0]]), "$")
-        ref = step(kind, _guid(f"element:{name}"), owner, _text(name), "$", "$", placed(at_storey), shape, "$", *tail)
+                step("IFCSTYLEDITEM", faces, _refs([style(tag)[0]]), "$")
+        guid = _guid(f"element:{name}:{key}")
+        ref = step(kind, guid, owner, _text(name), "$", "$", placed(at_storey), shape, "$", *tail)
+        ids[ref] = guid
         if tag is not None:
             wearers.setdefault(tag, []).append(ref)
         return ref
@@ -195,10 +226,12 @@ def write_ifc(root, path):
         """`ob` as a product — a mesh a proxy, anything that groups an assembly — and its
         children under it; nothing, where nothing under it has geometry."""
         kids = [r for r in (walk(c) for c in sorted(ob.children, key=lambda c: c.name)) if r is not None]
-        if ob.type == "MESH":
-            ref = product(ob, "IFCBUILDINGELEMENTPROXY", ".ELEMENT.")
+        geometry = mesh(ob)
+        if geometry is not None:
+            ref = product(ob, "IFCBUILDINGELEMENTPROXY", _digest(*geometry[:2]), geometry, ".ELEMENT.")
         elif kids or top:
-            ref = product(ob, "IFCELEMENTASSEMBLY", ".FACTORY.", ".NOTDEFINED.")
+            ref = product(ob, "IFCELEMENTASSEMBLY", _digest(*(ids[k] for k in kids)), None,
+                          ".FACTORY.", ".NOTDEFINED.")
         else:
             return None
         if kids:
@@ -206,18 +239,28 @@ def write_ifc(root, path):
         return ref
 
     top = walk(root, top=True)
+    whole = f"{title}:{ids[top]}"       # the model: what every id above and beside the parts digests
+
+    def spatial(kind, name, at, *tail):
+        return step(kind, _guid(f"{kind}:{whole}"), owner, _text(name), "$", "$", at, "$", "$", ".ELEMENT.", *tail)
+
+    site = spatial("IFCSITE", "Site", at_site, "$", "$", "$", "$", "$")
+    building = spatial("IFCBUILDING", "Building", at_building, "$", "$", "$")
+    storey = spatial("IFCBUILDINGSTOREY", "Storey", at_storey, "0.")
+    project = step("IFCPROJECT", _guid(f"project:{whole}"), owner, _text(title), "$", "$", "$", "$",
+                   _refs([model]), units)
 
     def rel(kind, key, *tail):
         return step(kind, _guid(key), owner, "$", "$", *tail)
 
-    rel("IFCRELAGGREGATES", f"aggregates:project:{title}", project, _refs([site]))
-    rel("IFCRELAGGREGATES", f"aggregates:site:{title}", site, _refs([building]))
-    rel("IFCRELAGGREGATES", f"aggregates:building:{title}", building, _refs([storey]))
-    rel("IFCRELCONTAINEDINSPATIALSTRUCTURE", f"contains:storey:{title}", _refs([top]), storey)
+    rel("IFCRELAGGREGATES", f"aggregates:project:{whole}", project, _refs([site]))
+    rel("IFCRELAGGREGATES", f"aggregates:site:{whole}", site, _refs([building]))
+    rel("IFCRELAGGREGATES", f"aggregates:building:{whole}", building, _refs([storey]))
+    rel("IFCRELCONTAINEDINSPATIALSTRUCTURE", f"contains:storey:{whole}", _refs([top]), storey)
     for parent, kids in under.items():
-        rel("IFCRELAGGREGATES", f"aggregates:parts:{parent}", parent, _refs(kids))
+        rel("IFCRELAGGREGATES", f"aggregates:parts:{ids[parent]}", parent, _refs(kids))
     for tag, parts in wearers.items():
-        rel("IFCRELASSOCIATESMATERIAL", f"material:{materials._name(tag)}", _refs(parts), looks[tag][1])
+        rel("IFCRELASSOCIATESMATERIAL", f"material:{materials._name(tag)}:{whole}", _refs(parts), looks[tag][1])
 
     path = os.fspath(path)
     head = [

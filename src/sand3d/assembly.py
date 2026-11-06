@@ -72,9 +72,10 @@ def export(root, path):
     its meshes as OBJ in `<stem>_meshes/` beside it, the colours `material` set — or a
     USD layer as text, the URDF's links, joints and names in UsdGeom and UsdPhysics, Z up,
     with the materials (`.usdc` is binary: convert the `.usda`) — or an IFC4 file, the part
-    tree as an IfcProject of assemblies and proxies, every mesh a faceted brep at the current
-    pose, with the materials, which Revit, ArchiCAD, Tekla and Solibri open and link — or the
-    meshes alone, as OBJ (Y up) or binary STL (Z up), at the current pose. Limits only: masses,
+    tree as an IfcProject of assemblies and proxies, every mesh a triangulated face set at
+    the current pose, with the materials, which Revit, ArchiCAD, Tekla and Solibri open and
+    link — or the meshes alone, as OBJ (Y up) or binary STL (Z up), at the current pose.
+    Limits only: masses,
     frictions, efforts and drives are dynamics, which sand3d does not say."""
     from . import ifcfile, meshfile, urdf, usd
     from .assembly import Handle
